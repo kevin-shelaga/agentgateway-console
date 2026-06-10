@@ -1,0 +1,420 @@
+import { summarizeStatus } from "./conditions";
+import type { K8sResource, ResourceDescriptor, StatusSummary } from "./types";
+
+const GATEWAY_API_GROUP = "gateway.networking.k8s.io";
+const AGENTGATEWAY_GROUP = "agentgateway.dev";
+
+function spec(res: K8sResource): Record<string, unknown> {
+  return (res.spec ?? {}) as Record<string, unknown>;
+}
+
+function noStatus(res: K8sResource): StatusSummary {
+  return { state: "Unknown", message: "", conditions: [] };
+}
+
+/** Which top-level key of an AgentgatewayBackend spec is set. */
+export function backendType(res: K8sResource): string {
+  const s = spec(res);
+  for (const key of ["ai", "mcp", "static", "dynamicForwardProxy", "aws", "a2a"]) {
+    if (s[key] !== undefined) return key;
+  }
+  return "unknown";
+}
+
+export function backendDetail(res: K8sResource): string {
+  const s = spec(res);
+  const ai = s.ai as Record<string, unknown> | undefined;
+  if (ai) {
+    const provider = (ai.provider ?? {}) as Record<string, unknown>;
+    const name = Object.keys(provider).find((k) =>
+      ["openai", "azureopenai", "azure", "anthropic", "gemini", "vertexai", "bedrock", "custom"].includes(k),
+    );
+    if (name) {
+      const model = (provider[name] as Record<string, unknown> | undefined)?.model;
+      return model ? `${name} · ${model}` : name;
+    }
+    if (Array.isArray(ai.groups)) return `${ai.groups.length} priority group(s)`;
+    return "ai";
+  }
+  const mcp = s.mcp as Record<string, unknown> | undefined;
+  if (mcp && Array.isArray(mcp.targets)) return `${mcp.targets.length} target(s)`;
+  const stat = s.static as Record<string, unknown> | undefined;
+  if (stat) return [stat.host, stat.port].filter((v) => v !== undefined).join(":");
+  const a2a = s.a2a as Record<string, unknown> | undefined;
+  if (a2a) return [a2a.host, a2a.port].filter((v) => v !== undefined).join(":");
+  if (s.aws) return "agentCore";
+  return "";
+}
+
+function policySections(res: K8sResource): string[] {
+  return ["frontend", "traffic", "backend"].filter((k) => spec(res)[k] !== undefined);
+}
+
+function policyTargets(res: K8sResource): string[] {
+  const targetRefs = spec(res).targetRefs;
+  if (!Array.isArray(targetRefs)) return [];
+  return targetRefs.map((ref) => {
+    const r = ref as Record<string, unknown>;
+    return [r.kind, r.name].filter(Boolean).join("/");
+  });
+}
+
+export const RESOURCES: ResourceDescriptor[] = [
+  {
+    id: "gatewayclasses",
+    kind: "GatewayClass",
+    group: GATEWAY_API_GROUP,
+    version: "v1",
+    plural: "gatewayclasses",
+    scope: "Cluster",
+    crdName: "gatewayclasses.gateway.networking.k8s.io",
+    label: "Gateway Class",
+    labelPlural: "Gateway Classes",
+    description: "Cluster-wide gateway implementations and their parameters",
+    icon: "layers",
+    listColumns: [
+      {
+        id: "controller",
+        header: "Controller",
+        mono: true,
+        accessor: (r) => spec(r).controllerName as string | undefined,
+      },
+      {
+        id: "paramsRef",
+        header: "Parameters",
+        mono: true,
+        accessor: (r) => {
+          const p = spec(r).parametersRef as Record<string, unknown> | undefined;
+          return p ? `${p.kind}/${p.name}` : undefined;
+        },
+      },
+    ],
+    getStatus: summarizeStatus,
+    template: () => ({
+      apiVersion: `${GATEWAY_API_GROUP}/v1`,
+      kind: "GatewayClass",
+      metadata: { name: "agentgateway" },
+      spec: { controllerName: "agentgateway.dev/agentgateway" },
+    }),
+    docsUrl: "https://gateway-api.sigs.k8s.io/api-types/gatewayclass/",
+  },
+  {
+    id: "gateways",
+    kind: "Gateway",
+    group: GATEWAY_API_GROUP,
+    version: "v1",
+    plural: "gateways",
+    scope: "Namespaced",
+    crdName: "gateways.gateway.networking.k8s.io",
+    label: "Gateway",
+    labelPlural: "Gateways",
+    description: "Traffic entry points: listeners, ports, and TLS",
+    icon: "doorOpen",
+    listColumns: [
+      {
+        id: "class",
+        header: "Class",
+        mono: true,
+        accessor: (r) => spec(r).gatewayClassName as string | undefined,
+      },
+      {
+        id: "listeners",
+        header: "Listeners",
+        accessor: (r) => {
+          const listeners = spec(r).listeners;
+          if (!Array.isArray(listeners)) return undefined;
+          return listeners.map((l) => {
+            const x = l as Record<string, unknown>;
+            return `${x.protocol}:${x.port}`;
+          });
+        },
+      },
+      {
+        id: "address",
+        header: "Address",
+        mono: true,
+        accessor: (r) => {
+          const addrs = (r.status as Record<string, unknown> | undefined)?.addresses;
+          if (!Array.isArray(addrs)) return undefined;
+          return addrs
+            .map((a) => (a as Record<string, unknown>).value as string)
+            .filter(Boolean)
+            .join(", ");
+        },
+      },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${GATEWAY_API_GROUP}/v1`,
+      kind: "Gateway",
+      metadata: { name: "my-gateway", namespace },
+      spec: {
+        gatewayClassName: "agentgateway",
+        listeners: [{ name: "http", protocol: "HTTP", port: 80, allowedRoutes: { namespaces: { from: "Same" } } }],
+      },
+    }),
+    docsUrl: "https://gateway-api.sigs.k8s.io/api-types/gateway/",
+  },
+  {
+    id: "httproutes",
+    kind: "HTTPRoute",
+    group: GATEWAY_API_GROUP,
+    version: "v1",
+    plural: "httproutes",
+    scope: "Namespaced",
+    crdName: "httproutes.gateway.networking.k8s.io",
+    label: "HTTP Route",
+    labelPlural: "HTTP Routes",
+    description: "HTTP routing rules from gateways to backends",
+    icon: "route",
+    listColumns: [
+      {
+        id: "hostnames",
+        header: "Hostnames",
+        mono: true,
+        accessor: (r) => (spec(r).hostnames as string[] | undefined) ?? "*",
+      },
+      {
+        id: "parents",
+        header: "Gateways",
+        accessor: (r) => {
+          const refs = spec(r).parentRefs;
+          if (!Array.isArray(refs)) return undefined;
+          return refs.map((p) => (p as Record<string, unknown>).name as string);
+        },
+      },
+      {
+        id: "rules",
+        header: "Rules",
+        accessor: (r) => {
+          const rules = spec(r).rules;
+          return Array.isArray(rules) ? String(rules.length) : "0";
+        },
+      },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${GATEWAY_API_GROUP}/v1`,
+      kind: "HTTPRoute",
+      metadata: { name: "my-route", namespace },
+      spec: {
+        parentRefs: [{ name: "my-gateway" }],
+        rules: [
+          {
+            matches: [{ path: { type: "PathPrefix", value: "/" } }],
+            backendRefs: [{ name: "my-backend", group: AGENTGATEWAY_GROUP, kind: "AgentgatewayBackend" }],
+          },
+        ],
+      },
+    }),
+    docsUrl: "https://gateway-api.sigs.k8s.io/api-types/httproute/",
+  },
+  {
+    id: "grpcroutes",
+    kind: "GRPCRoute",
+    group: GATEWAY_API_GROUP,
+    version: "v1",
+    plural: "grpcroutes",
+    scope: "Namespaced",
+    crdName: "grpcroutes.gateway.networking.k8s.io",
+    label: "GRPC Route",
+    labelPlural: "GRPC Routes",
+    description: "gRPC routing rules from gateways to backends",
+    icon: "waypoints",
+    listColumns: [
+      {
+        id: "hostnames",
+        header: "Hostnames",
+        mono: true,
+        accessor: (r) => (spec(r).hostnames as string[] | undefined) ?? "*",
+      },
+      {
+        id: "parents",
+        header: "Gateways",
+        accessor: (r) => {
+          const refs = spec(r).parentRefs;
+          if (!Array.isArray(refs)) return undefined;
+          return refs.map((p) => (p as Record<string, unknown>).name as string);
+        },
+      },
+      {
+        id: "rules",
+        header: "Rules",
+        accessor: (r) => {
+          const rules = spec(r).rules;
+          return Array.isArray(rules) ? String(rules.length) : "0";
+        },
+      },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${GATEWAY_API_GROUP}/v1`,
+      kind: "GRPCRoute",
+      metadata: { name: "my-grpc-route", namespace },
+      spec: {
+        parentRefs: [{ name: "my-gateway" }],
+        rules: [{ backendRefs: [{ name: "my-service", port: 9000 }] }],
+      },
+    }),
+    docsUrl: "https://gateway-api.sigs.k8s.io/api-types/grpcroute/",
+  },
+  {
+    id: "backends",
+    kind: "AgentgatewayBackend",
+    group: AGENTGATEWAY_GROUP,
+    version: "v1alpha1",
+    plural: "agentgatewaybackends",
+    scope: "Namespaced",
+    crdName: "agentgatewaybackends.agentgateway.dev",
+    label: "Backend",
+    labelPlural: "Backends",
+    description: "AI providers, MCP servers, and static upstreams",
+    icon: "server",
+    listColumns: [
+      { id: "type", header: "Type", accessor: backendType },
+      { id: "detail", header: "Detail", mono: true, accessor: backendDetail },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${AGENTGATEWAY_GROUP}/v1alpha1`,
+      kind: "AgentgatewayBackend",
+      metadata: { name: "my-backend", namespace },
+      spec: { ai: { provider: { openai: { model: "gpt-4o-mini" } } } },
+    }),
+    docsUrl: "https://agentgateway.dev/docs/",
+  },
+  {
+    id: "policies",
+    kind: "AgentgatewayPolicy",
+    group: AGENTGATEWAY_GROUP,
+    version: "v1alpha1",
+    plural: "agentgatewaypolicies",
+    scope: "Namespaced",
+    crdName: "agentgatewaypolicies.agentgateway.dev",
+    label: "Policy",
+    labelPlural: "Policies",
+    description: "Traffic, frontend, and backend policies attached to resources",
+    icon: "shieldCheck",
+    listColumns: [
+      { id: "targets", header: "Targets", mono: true, accessor: policyTargets },
+      { id: "sections", header: "Configures", accessor: policySections },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${AGENTGATEWAY_GROUP}/v1alpha1`,
+      kind: "AgentgatewayPolicy",
+      metadata: { name: "my-policy", namespace },
+      spec: {
+        targetRefs: [{ group: GATEWAY_API_GROUP, kind: "Gateway", name: "my-gateway" }],
+        traffic: {},
+      },
+    }),
+    docsUrl: "https://agentgateway.dev/docs/",
+  },
+  {
+    id: "parameters",
+    kind: "AgentgatewayParameters",
+    group: AGENTGATEWAY_GROUP,
+    version: "v1alpha1",
+    plural: "agentgatewayparameters",
+    scope: "Namespaced",
+    crdName: "agentgatewayparameters.agentgateway.dev",
+    label: "Parameters",
+    labelPlural: "Parameters",
+    description: "Data plane deployment settings referenced by gateway classes",
+    icon: "settings2",
+    listColumns: [
+      {
+        id: "image",
+        header: "Image",
+        mono: true,
+        accessor: (r) => {
+          const img = spec(r).image as Record<string, unknown> | undefined;
+          if (!img) return undefined;
+          return [img.registry, img.repository].filter(Boolean).join("/") + (img.tag ? `:${img.tag}` : "");
+        },
+      },
+      {
+        id: "logging",
+        header: "Logging",
+        accessor: (r) => {
+          const logging = spec(r).logging as Record<string, unknown> | undefined;
+          return logging ? [logging.level, logging.format].filter(Boolean).join(" · ") : undefined;
+        },
+      },
+    ],
+    getStatus: noStatus,
+    template: (namespace) => ({
+      apiVersion: `${AGENTGATEWAY_GROUP}/v1alpha1`,
+      kind: "AgentgatewayParameters",
+      metadata: { name: "agentgateway-params", namespace },
+      spec: { logging: { level: "info", format: "json" } },
+    }),
+    docsUrl: "https://agentgateway.dev/docs/",
+  },
+];
+
+/** Read-only kinds used to populate pickers and reference panels. */
+export const READONLY_RESOURCES: ResourceDescriptor[] = [
+  {
+    id: "namespaces",
+    kind: "Namespace",
+    group: "",
+    version: "v1",
+    plural: "namespaces",
+    scope: "Cluster",
+    crdName: "",
+    label: "Namespace",
+    labelPlural: "Namespaces",
+    description: "Cluster namespaces",
+    icon: "box",
+    listColumns: [],
+    getStatus: noStatus,
+    template: () => ({ apiVersion: "v1", kind: "Namespace", metadata: { name: "" } }),
+    readOnly: true,
+  },
+  {
+    id: "services",
+    kind: "Service",
+    group: "",
+    version: "v1",
+    plural: "services",
+    scope: "Namespaced",
+    crdName: "",
+    label: "Service",
+    labelPlural: "Services",
+    description: "Cluster services",
+    icon: "network",
+    listColumns: [],
+    getStatus: noStatus,
+    template: () => ({ apiVersion: "v1", kind: "Service", metadata: { name: "" } }),
+    readOnly: true,
+  },
+  {
+    id: "secrets",
+    kind: "Secret",
+    group: "",
+    version: "v1",
+    plural: "secrets",
+    scope: "Namespaced",
+    crdName: "",
+    label: "Secret",
+    labelPlural: "Secrets",
+    description: "Secret names (data never exposed)",
+    icon: "keyRound",
+    listColumns: [],
+    getStatus: noStatus,
+    template: () => ({ apiVersion: "v1", kind: "Secret", metadata: { name: "" } }),
+    readOnly: true,
+  },
+];
+
+export const ALL_RESOURCES = [...RESOURCES, ...READONLY_RESOURCES];
+
+export function getResource(id: string): ResourceDescriptor | undefined {
+  return ALL_RESOURCES.find((r) => r.id === id);
+}
+
+export function getResourceByKind(kind: string): ResourceDescriptor | undefined {
+  return ALL_RESOURCES.find((r) => r.kind === kind);
+}
