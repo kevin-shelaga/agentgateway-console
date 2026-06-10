@@ -31,6 +31,8 @@ Namespaces, Services, Secrets (names + metadata only — never secret data).
 
 Next.js 15 (App Router) full-stack app. Three layers:
 
+> **Amendment (implementation):** the YAML editor uses CodeMirror 6 instead of Monaco — monaco-yaml requires custom web-worker bundling that fights Next.js, while CodeMirror bundles cleanly and the AJV layer supplies equivalent schema diagnostics.
+
 ### 1. BFF API routes (`src/app/api/`)
 
 Thin Kubernetes proxy using `@kubernetes/client-node`. Loads kubeconfig locally (context switching supported) or in-cluster ServiceAccount config when deployed to a cluster.
