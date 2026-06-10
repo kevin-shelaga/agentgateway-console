@@ -15,7 +15,7 @@ export default defineConfig({
     trace: "on-first-retry",
   },
   webServer: {
-    command: `PORT=${port} HOSTNAME=127.0.0.1 npm run start`,
+    command: `node bin/agentgateway-console.mjs --port ${port} --no-open`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
