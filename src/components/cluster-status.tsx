@@ -21,6 +21,25 @@ export function ClusterStatus() {
   const current = cluster?.context ?? context ?? contexts?.current ?? "—";
   const connected = cluster?.connected === true;
 
+  // Hard-locked single-cluster deployment: identity only, no switching.
+  if (contexts?.inCluster) {
+    return (
+      <div className="flex w-full items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2.5 py-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:px-0">
+        {connected ? (
+          <span className="status-dot status-dot-healthy" />
+        ) : (
+          <Unplug className="size-3.5 text-destructive" />
+        )}
+        <span className="flex min-w-0 flex-1 flex-col group-data-[collapsible=icon]:hidden">
+          <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+            {connected ? "Connected" : "Unreachable"}
+          </span>
+          <span className="k8s-id truncate text-xs">this cluster</span>
+        </span>
+      </div>
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md border border-sidebar-border bg-sidebar-accent/40 px-2.5 py-2 text-left transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:border-0 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:px-0">

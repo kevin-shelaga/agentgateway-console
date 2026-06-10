@@ -126,6 +126,8 @@ export async function fetchSchema(crdName: string): Promise<CrdSchemaResponse> {
 export interface ContextsResponse {
   contexts: string[];
   current: string;
+  /** True when the console is hard-locked to the surrounding cluster. */
+  inCluster: boolean;
 }
 
 export async function fetchContexts(): Promise<ContextsResponse> {
