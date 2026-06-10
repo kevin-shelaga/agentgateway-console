@@ -1,6 +1,6 @@
 "use client";
 
-import { FlaskConical, LayoutDashboard } from "lucide-react";
+import { FlaskConical, KeyRound, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AgentgatewayLogo } from "@/components/agentgateway-logo";
@@ -25,7 +25,15 @@ import { RESOURCES } from "@/lib/registry";
 const GATEWAY_API_IDS = ["gatewayclasses", "gateways", "httproutes", "grpcroutes"];
 const AGENTGATEWAY_IDS = ["backends", "policies", "parameters"];
 
-function NavGroup({ label, ids }: { label: string; ids: string[] }) {
+function NavGroup({
+  label,
+  ids,
+  children,
+}: {
+  label: string;
+  ids: string[];
+  children?: React.ReactNode;
+}) {
   const pathname = usePathname();
   return (
     <SidebarGroup>
@@ -50,6 +58,7 @@ function NavGroup({ label, ids }: { label: string; ids: string[] }) {
               </SidebarMenuItem>
             );
           })}
+          {children}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>
@@ -101,7 +110,20 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
         <NavGroup label="Gateway API" ids={GATEWAY_API_IDS} />
-        <NavGroup label="Agentgateway" ids={AGENTGATEWAY_IDS} />
+        <NavGroup label="Agentgateway" ids={AGENTGATEWAY_IDS}>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              isActive={pathname === "/api-keys" || pathname.startsWith("/api-keys/")}
+              tooltip="API Keys"
+            >
+              <Link href="/api-keys">
+                <KeyRound />
+                <span>API Keys</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </NavGroup>
       </SidebarContent>
       <SidebarFooter>
         <div className="flex items-center gap-1.5 group-data-[collapsible=icon]:flex-col">
