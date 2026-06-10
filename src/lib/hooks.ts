@@ -5,7 +5,8 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect } from "react";
+import { recordSamples } from "./metrics-history";
 import {
   createResource,
   deleteResource,
@@ -64,11 +65,16 @@ export function useNamespaces() {
 
 export function useInfra() {
   const { context } = useKubeContext();
-  return useQuery({
+  const query = useQuery({
     queryKey: ["infra", context],
     queryFn: fetchInfra,
     refetchInterval: 15_000,
   });
+  // Every consumer feeds the session-wide usage history (charts/sparklines).
+  useEffect(() => {
+    if (query.data?.metricsAvailable) recordSamples(query.data.pods, Date.now());
+  }, [query.data]);
+  return query;
 }
 
 export function useClusterInfo() {

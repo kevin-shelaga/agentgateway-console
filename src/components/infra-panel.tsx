@@ -2,7 +2,6 @@
 
 import { Cpu, MemoryStick } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 import { Sparkline } from "@/components/sparkline";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,16 +9,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { InfraPod } from "@/lib/api-client";
 import { formatAge } from "@/lib/format";
 import { useInfra } from "@/lib/hooks";
+import { getHistory, podKey } from "@/lib/metrics-history";
 import { formatCpu, formatMemory } from "@/lib/quantity";
 import { cn } from "@/lib/utils";
-
-const MAX_SAMPLES = 40;
-
-type SampleMap = Record<string, { cpu: number[]; mem: number[] }>;
-
-function podKey(pod: InfraPod): string {
-  return `${pod.namespace}/${pod.name}`;
-}
 
 function podState(pod: InfraPod): "healthy" | "pending" | "degraded" {
   if (pod.phase === "Pending") return "pending";
@@ -30,16 +22,23 @@ function podState(pod: InfraPod): "healthy" | "pending" | "degraded" {
 
 function PodRow({
   pod,
-  samples,
   metricsAvailable,
 }: {
   pod: InfraPod;
-  samples?: { cpu: number[]; mem: number[] };
   metricsAvailable: boolean;
 }) {
   const state = podState(pod);
+  const history = getHistory(podKey(pod));
+  const samples = {
+    cpu: history.map((s) => s.cpu),
+    mem: history.map((s) => s.mem),
+  };
   return (
-    <li className="flex items-center gap-3 py-2">
+    <li>
+      <Link
+        href={`/pods/${pod.namespace}/${pod.name}`}
+        className="flex items-center gap-3 rounded-md px-1 py-2 transition-colors hover:bg-accent/40"
+      >
       <span
         className={cn(
           "status-dot shrink-0",
@@ -51,14 +50,7 @@ function PodRow({
       <span className="min-w-0 flex-1">
         <span className="flex flex-wrap items-baseline gap-x-2">
           <span className="k8s-id truncate text-xs font-medium">{pod.name}</span>
-          {pod.gateway && (
-            <Link
-              href={`/resources/gateways/${pod.namespace}/${pod.gateway}`}
-              className="text-[10px] text-primary hover:underline"
-            >
-              {pod.gateway}
-            </Link>
-          )}
+          {pod.gateway && <span className="text-[10px] text-primary">{pod.gateway}</span>}
         </span>
         <span className="block text-[11px] text-muted-foreground">
           {pod.phase} · {pod.ready} ready
@@ -87,6 +79,7 @@ function PodRow({
           </span>
         </span>
       )}
+      </Link>
     </li>
   );
 }
@@ -98,23 +91,6 @@ function PodRow({
  */
 export function InfraPanel({ className, style }: { className?: string; style?: React.CSSProperties }) {
   const { data, isLoading } = useInfra();
-  const [samples, setSamples] = useState<SampleMap>({});
-
-  useEffect(() => {
-    if (!data?.metricsAvailable) return;
-    setSamples((prev) => {
-      const next: SampleMap = {};
-      for (const pod of data.pods) {
-        const key = podKey(pod);
-        const entry = prev[key] ?? { cpu: [], mem: [] };
-        next[key] = {
-          cpu: [...entry.cpu, pod.cpuMillis ?? 0].slice(-MAX_SAMPLES),
-          mem: [...entry.mem, pod.memoryBytes ?? 0].slice(-MAX_SAMPLES),
-        };
-      }
-      return next;
-    });
-  }, [data]);
 
   const proxies = (data?.pods ?? [])
     .filter((p) => p.role === "proxy")
@@ -158,7 +134,6 @@ export function InfraPanel({ className, style }: { className?: string; style?: R
                   <PodRow
                     key={podKey(pod)}
                     pod={pod}
-                    samples={samples[podKey(pod)]}
                     metricsAvailable={!!data?.metricsAvailable}
                   />
                 ))}
@@ -176,7 +151,6 @@ export function InfraPanel({ className, style }: { className?: string; style?: R
                   <PodRow
                     key={podKey(pod)}
                     pod={pod}
-                    samples={samples[podKey(pod)]}
                     metricsAvailable={!!data?.metricsAvailable}
                   />
                 ))}

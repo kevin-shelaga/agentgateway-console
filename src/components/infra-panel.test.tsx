@@ -57,11 +57,12 @@ describe("InfraPanel", () => {
     // group count badges
     expect(screen.getByText("2")).toBeInTheDocument();
     expect(screen.getByText("1")).toBeInTheDocument();
-    // proxy pods deep-link to their gateway
-    expect(screen.getByRole("link", { name: "api-agentgateway" })).toHaveAttribute(
+    // each row deep-links to the pod detail page (gateway shown as a chip)
+    expect(screen.getByRole("link", { name: /gw-proxy-abc/ })).toHaveAttribute(
       "href",
-      "/resources/gateways/agentgateway-system/api-agentgateway",
+      "/pods/agentgateway-system/gw-proxy-abc",
     );
+    expect(screen.getByText("api-agentgateway")).toBeInTheDocument();
     expect(screen.getByText("live usage · 15s")).toBeInTheDocument();
   });
 

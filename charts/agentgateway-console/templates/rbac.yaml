@@ -33,10 +33,11 @@ rules:
     resources:
       - customresourcedefinitions
     verbs: ["get"]
-  # Runtime panel: proxy/control plane pod inventory + usage.
+  # Runtime panel + pod detail: inventory, usage, and logs.
   - apiGroups: [""]
     resources:
       - pods
+      - pods/log
     verbs: ["get", "list"]
   - apiGroups: ["metrics.k8s.io"]
     resources:
