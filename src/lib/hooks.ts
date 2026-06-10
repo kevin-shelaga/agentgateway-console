@@ -12,6 +12,7 @@ import {
   dryRunResource,
   fetchClusterInfo,
   fetchContexts,
+  fetchInfra,
   fetchSchema,
   getResourceItem,
   listResources,
@@ -58,6 +59,15 @@ export function useNamespaces() {
     queryKey: ["list", context, "namespaces", ""],
     queryFn: () => listResources(namespacesDesc),
     staleTime: 60_000,
+  });
+}
+
+export function useInfra() {
+  const { context } = useKubeContext();
+  return useQuery({
+    queryKey: ["infra", context],
+    queryFn: fetchInfra,
+    refetchInterval: 15_000,
   });
 }
 

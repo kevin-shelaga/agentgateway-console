@@ -134,6 +134,33 @@ export async function fetchContexts(): Promise<ContextsResponse> {
   return request<ContextsResponse>("/api/contexts");
 }
 
+export interface InfraPod {
+  name: string;
+  namespace: string;
+  role: "proxy" | "controlplane";
+  gateway?: string;
+  phase: string;
+  ready: string;
+  restarts: number;
+  node?: string;
+  startTime?: string;
+  cpuMillis?: number;
+  memoryBytes?: number;
+  cpuRequestMillis?: number;
+  memoryRequestBytes?: number;
+  cpuLimitMillis?: number;
+  memoryLimitBytes?: number;
+}
+
+export interface InfraResponse {
+  metricsAvailable: boolean;
+  pods: InfraPod[];
+}
+
+export async function fetchInfra(): Promise<InfraResponse> {
+  return request<InfraResponse>("/api/infra");
+}
+
 export interface ClusterInfo {
   connected: boolean;
   context: string | null;

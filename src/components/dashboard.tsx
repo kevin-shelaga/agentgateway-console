@@ -4,6 +4,7 @@ import { ArrowRight, CheckCircle2, Plus } from "lucide-react";
 import Link from "next/link";
 import { useMemo } from "react";
 import { resourceIcon } from "@/components/icon-map";
+import { InfraPanel } from "@/components/infra-panel";
 import { ClusterUnreachable } from "@/components/page-states";
 import { StatusBadge } from "@/components/status-badge";
 import { Badge } from "@/components/ui/badge";
@@ -343,6 +344,12 @@ export function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Runtime: proxy + control plane pods with live usage */}
+      <InfraPanel
+        className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500"
+        style={{ animationDelay: "340ms" }}
+      />
 
       {/* Protocol distribution · Policy overview · AI providers */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
