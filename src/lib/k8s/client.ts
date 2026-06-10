@@ -3,7 +3,17 @@ import {
   CoreV1Api,
   KubeConfig,
   KubernetesObjectApi,
+  type KubernetesObject,
 } from "@kubernetes/client-node";
+
+/**
+ * Bridges our wire-format typing (string timestamps) to the client's
+ * KubernetesObject (Date timestamps). Safe: the client serializes back to the
+ * same JSON either way.
+ */
+export function asKubernetesObject(res: unknown): KubernetesObject {
+  return res as KubernetesObject;
+}
 
 /**
  * Load a KubeConfig: in-cluster when running inside Kubernetes, otherwise
