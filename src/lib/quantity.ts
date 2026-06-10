@@ -46,7 +46,9 @@ export function formatCpu(millis: number): string {
     const cores = millis / 1000;
     return Number.isInteger(cores) ? String(cores) : cores.toFixed(1);
   }
-  if (millis < 1) return "<1m";
+  if (millis === 0) return "0m";
+  // Idle pods sit well below 1m — fractions keep chart scales meaningful.
+  if (millis < 1) return `${Number(millis.toPrecision(2))}m`;
   return `${Math.round(millis)}m`;
 }
 

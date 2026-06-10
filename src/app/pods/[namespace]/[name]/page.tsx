@@ -60,6 +60,19 @@ export default function PodDetailPage({
   const infra = useInfra();
   const history = getHistory(`${namespace}/${name}`);
 
+  // Requests/limits give the charts their context lines.
+  const infraPod = infra.data?.pods.find((p) => p.namespace === namespace && p.name === name);
+  const cpuRefs = [
+    ...(infraPod?.cpuRequestMillis ? [{ value: infraPod.cpuRequestMillis, label: "request" }] : []),
+    ...(infraPod?.cpuLimitMillis ? [{ value: infraPod.cpuLimitMillis, label: "limit" }] : []),
+  ];
+  const memRefs = [
+    ...(infraPod?.memoryRequestBytes
+      ? [{ value: infraPod.memoryRequestBytes, label: "request" }]
+      : []),
+    ...(infraPod?.memoryLimitBytes ? [{ value: infraPod.memoryLimitBytes, label: "limit" }] : []),
+  ];
+
   const [container, setContainer] = useState<string>("");
   const [tailLines, setTailLines] = useState(500);
   const [following, setFollowing] = useState(true);
@@ -159,7 +172,13 @@ export default function PodDetailPage({
               </CardHeader>
               <CardContent>
                 {metricsAvailable ? (
-                  <AreaChart samples={history} metric="cpu" format={formatCpu} className="text-chart-1" />
+                  <AreaChart
+                    samples={history}
+                    metric="cpu"
+                    format={formatCpu}
+                    referenceLines={cpuRefs}
+                    className="text-chart-1"
+                  />
                 ) : (
                   <p className="py-8 text-center text-xs text-muted-foreground">
                     metrics-server not available
@@ -174,7 +193,13 @@ export default function PodDetailPage({
               </CardHeader>
               <CardContent>
                 {metricsAvailable ? (
-                  <AreaChart samples={history} metric="mem" format={formatMemory} className="text-chart-3" />
+                  <AreaChart
+                    samples={history}
+                    metric="mem"
+                    format={formatMemory}
+                    referenceLines={memRefs}
+                    className="text-chart-3"
+                  />
                 ) : (
                   <p className="py-8 text-center text-xs text-muted-foreground">
                     metrics-server not available

@@ -31,7 +31,9 @@ describe("parseMemoryBytes", () => {
 describe("formatters", () => {
   it("formats cpu", () => {
     expect(formatCpu(2)).toBe("2m");
-    expect(formatCpu(0.4)).toBe("<1m");
+    expect(formatCpu(0.4)).toBe("0.4m");
+    expect(formatCpu(0.503928)).toBe("0.5m");
+    expect(formatCpu(0)).toBe("0m");
     expect(formatCpu(1500)).toBe("1.5");
   });
   it("formats memory", () => {
