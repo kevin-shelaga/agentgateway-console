@@ -4,6 +4,7 @@ import { KeyRound, MoreHorizontal, Plus, RefreshCw, RotateCcw, Trash2 } from "lu
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ApiKeyInput } from "@/components/api-key-input";
 import { NamespaceFilter } from "@/components/namespace-filter";
 import {
   ClusterUnreachable,
@@ -455,15 +456,7 @@ function CreateKeyDialog({
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="key-value">API key</Label>
-            <Input
-              id="key-value"
-              type="password"
-              autoComplete="off"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-…"
-              className="font-mono text-xs"
-            />
+            <ApiKeyInput id="key-value" value={apiKey} onChange={setApiKey} />
           </div>
         </div>
         <DialogFooter>
@@ -526,15 +519,7 @@ function RotateKeyDialog({
         </DialogHeader>
         <div className="space-y-1.5">
           <Label htmlFor="rotate-value">New API key</Label>
-          <Input
-            id="rotate-value"
-            type="password"
-            autoComplete="off"
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-…"
-            className="font-mono text-xs"
-          />
+          <ApiKeyInput id="rotate-value" value={apiKey} onChange={setApiKey} />
         </div>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
