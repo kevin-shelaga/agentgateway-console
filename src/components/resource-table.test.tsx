@@ -96,7 +96,7 @@ describe("ResourceTable", () => {
     expect(push).toHaveBeenCalledWith(detailHref);
 
     push.mockClear();
-    await userEvent.click(screen.getByRole("button", { expanded: false }));
+    await userEvent.click(screen.getByRole("button", { name: "Row actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /View/ }));
     expect(push).toHaveBeenCalledWith(detailHref);
   });
@@ -104,7 +104,7 @@ describe("ResourceTable", () => {
   it("navigates to the edit page via the Edit action", async () => {
     mockFetch([]);
     renderTable();
-    await userEvent.click(screen.getByRole("button", { expanded: false }));
+    await userEvent.click(screen.getByRole("button", { name: "Row actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /Edit/ }));
     expect(push).toHaveBeenCalledWith(`${detailHref}/edit`);
   });
@@ -114,7 +114,7 @@ describe("ResourceTable", () => {
       { match: "/gateways/agentgateway-system/api-agentgateway", body: {} },
     ]);
     renderTable();
-    await userEvent.click(screen.getByRole("button", { expanded: false }));
+    await userEvent.click(screen.getByRole("button", { name: "Row actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /Delete/ }));
 
     // Confirm dialog (Radix portal)
@@ -141,7 +141,7 @@ describe("ResourceTable", () => {
       },
     ]);
     renderTable();
-    await userEvent.click(screen.getByRole("button", { expanded: false }));
+    await userEvent.click(screen.getByRole("button", { name: "Row actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /Delete/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Delete" }));
     expect(toast.error).toHaveBeenCalledWith("RBAC says no");
@@ -150,7 +150,7 @@ describe("ResourceTable", () => {
   it("cancelling the dialog does not delete", async () => {
     const fetchSpy = mockFetch([]);
     renderTable();
-    await userEvent.click(screen.getByRole("button", { expanded: false }));
+    await userEvent.click(screen.getByRole("button", { name: "Row actions" }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /Delete/ }));
     await userEvent.click(await screen.findByRole("button", { name: "Cancel" }));
     expect(
@@ -161,9 +161,78 @@ describe("ResourceTable", () => {
   it("hides Edit and Delete for read-only descriptors", async () => {
     mockFetch([]);
     renderTable({ ...desc, readOnly: true });
-    await userEvent.click(screen.getByRole("button", { expanded: false }));
+    await userEvent.click(screen.getByRole("button", { name: "Row actions" }));
     expect(await screen.findByRole("menuitem", { name: /View/ })).toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /Edit/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: /Delete/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("ResourceTable sorting and filtering", () => {
+  const second = {
+    ...gateway,
+    metadata: {
+      ...gateway.metadata,
+      name: "zz-gateway",
+      creationTimestamp: "2026-06-01T00:00:00Z",
+    },
+    spec: { ...gateway.spec, gatewayClassName: "other-class" },
+    status: {
+      conditions: [{ type: "Programmed", status: "False", message: "broken" }],
+    },
+  };
+
+  function rowNames(): string[] {
+    return screen.getAllByRole("link").map((l) => l.textContent ?? "");
+  }
+
+  it("sorts by name ascending, then descending, then resets", async () => {
+    mockFetch([]);
+    renderTable(desc, [second, gateway]);
+    const sortButton = screen.getByRole("button", { name: "Sort by Name" });
+
+    await userEvent.click(sortButton);
+    expect(rowNames()[0]).toBe("api-agentgateway");
+    await userEvent.click(sortButton);
+    expect(rowNames()[0]).toBe("zz-gateway");
+    await userEvent.click(sortButton);
+    expect(rowNames()[0]).toBe("zz-gateway"); // original order restored
+  });
+
+  it("sorts by status severity (degraded first)", async () => {
+    mockFetch([]);
+    renderTable(desc, [gateway, second]);
+    await userEvent.click(screen.getByRole("button", { name: "Sort by Status" }));
+    expect(rowNames()[0]).toBe("zz-gateway");
+  });
+
+  it("filters rows via a column facet", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    mockFetch([]);
+    renderTable(desc, [gateway, second]);
+
+    await user.click(screen.getByRole("button", { name: "Filter Class" }));
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: /other-class/ }));
+    await user.keyboard("{Escape}"); // open menus aria-hide the table behind them
+    expect(rowNames()).toEqual(["zz-gateway"]);
+  });
+
+  it("filters by status facet and offers clearing when nothing matches", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    mockFetch([]);
+    renderTable(desc, [gateway, second]);
+
+    await user.click(screen.getByRole("button", { name: "Filter Status" }));
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: /Healthy/ }));
+    await user.keyboard("{Escape}");
+    expect(rowNames()).toEqual(["api-agentgateway"]);
+
+    // Add a contradictory class filter → no rows → clear-filters escape hatch.
+    await user.click(screen.getByRole("button", { name: "Filter Class" }));
+    await user.click(await screen.findByRole("menuitemcheckbox", { name: /other-class/ }));
+    await user.keyboard("{Escape}");
+    expect(screen.getByText(/No rows match the filters/)).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Clear filters" }));
+    expect(rowNames()).toHaveLength(2);
   });
 });

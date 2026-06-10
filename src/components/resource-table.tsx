@@ -1,9 +1,18 @@
 "use client";
 
-import { FileCode2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronsUpDown,
+  FileCode2,
+  Funnel,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -20,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -37,6 +47,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ApiError } from "@/lib/api-client";
 import { formatAge } from "@/lib/format";
 import { useDeleteResource } from "@/lib/hooks";
+import {
+  applyColumnFilters,
+  columnFacets,
+  sortResources,
+  STATUS_FILTER_KEY,
+  type ColumnFilters,
+  type Facet,
+  type SortState,
+} from "@/lib/table-sort";
 import type { K8sResource, ResourceDescriptor } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -68,6 +87,83 @@ function CellValue({ value, mono }: { value: string | string[] | undefined; mono
   return <span className={cn("truncate", mono && "k8s-id")}>{value}</span>;
 }
 
+/** Module-level so React keeps header DOM (and open dropdowns) across re-renders. */
+function SortableHead({
+  label,
+  sortKey,
+  filterKey,
+  facets,
+  className,
+  sort,
+  filters,
+  onSort,
+  onToggleFilter,
+}: {
+  label: string;
+  sortKey: string;
+  filterKey?: string;
+  facets?: Facet[];
+  className?: string;
+  sort: SortState | null;
+  filters: ColumnFilters;
+  onSort: (key: string) => void;
+  onToggleFilter: (columnId: string, value: string) => void;
+}) {
+  const active = sort?.key === sortKey;
+  const SortIcon = !active ? ChevronsUpDown : sort!.direction === "asc" ? ArrowUp : ArrowDown;
+  const effectiveFilterKey = filterKey ?? sortKey;
+  const selected = filters[effectiveFilterKey] ?? new Set<string>();
+  const filterable = (facets?.length ?? 0) > 1 && (facets?.length ?? 0) <= 12;
+  return (
+    <TableHead className={className}>
+      <span className="flex items-center gap-0.5">
+        <button
+          type="button"
+          onClick={() => onSort(sortKey)}
+          className={cn(
+            "flex cursor-pointer items-center gap-1 rounded-sm hover:text-foreground",
+            active && "text-foreground",
+          )}
+          aria-label={`Sort by ${label}`}
+        >
+          {label}
+          <SortIcon className={cn("size-3", !active && "opacity-40")} />
+        </button>
+        {filterable && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className={cn(
+                  "cursor-pointer rounded-sm p-0.5 hover:text-foreground",
+                  selected.size > 0 ? "text-primary" : "opacity-40",
+                )}
+                aria-label={`Filter ${label}`}
+              >
+                <Funnel className="size-3" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="max-h-72 overflow-auto">
+              {facets!.map(({ value, count }) => (
+                <DropdownMenuCheckboxItem
+                  key={value}
+                  checked={selected.has(value)}
+                  onCheckedChange={() => onToggleFilter(effectiveFilterKey, value)}
+                  onSelect={(e) => e.preventDefault()}
+                  className="font-mono text-xs"
+                >
+                  <span className="truncate">{value}</span>
+                  <span className="ml-auto pl-3 text-muted-foreground tabular-nums">{count}</span>
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </span>
+    </TableHead>
+  );
+}
+
 export function ResourceTable({
   desc,
   items,
@@ -78,6 +174,43 @@ export function ResourceTable({
   const router = useRouter();
   const remove = useDeleteResource(desc);
   const [pendingDelete, setPendingDelete] = useState<K8sResource | null>(null);
+  const [sort, setSort] = useState<SortState | null>(null);
+  const [filters, setFilters] = useState<ColumnFilters>({});
+
+  function cycleSort(key: string) {
+    setSort((prev) =>
+      prev?.key !== key
+        ? { key, direction: "asc" }
+        : prev.direction === "asc"
+          ? { key, direction: "desc" }
+          : null,
+    );
+  }
+
+  function toggleFilter(columnId: string, value: string) {
+    setFilters((prev) => {
+      const selected = new Set(prev[columnId] ?? []);
+      if (selected.has(value)) selected.delete(value);
+      else selected.add(value);
+      return { ...prev, [columnId]: selected };
+    });
+  }
+
+  const statusFacets = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const res of items) {
+      const state = desc.getStatus(res).state;
+      counts.set(state, (counts.get(state) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([value, count]) => ({ value, count }));
+  }, [items, desc]);
+
+  const visible = useMemo(
+    () => sortResources(applyColumnFilters(items, desc, filters), desc, sort),
+    [items, desc, filters, sort],
+  );
+  const filtersActive = Object.values(filters).some((s) => s.size > 0);
+  const headProps = { sort, filters, onSort: cycleSort, onToggleFilter: toggleFilter };
 
   async function confirmDelete() {
     if (!pendingDelete) return;
@@ -98,18 +231,40 @@ export function ResourceTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Name</TableHead>
-              {desc.scope === "Namespaced" && <TableHead>Namespace</TableHead>}
+              <SortableHead label="Name" sortKey="name" {...headProps} />
+              {desc.scope === "Namespaced" && (
+                <SortableHead label="Namespace" sortKey="namespace" {...headProps} />
+              )}
               {desc.listColumns.map((col) => (
-                <TableHead key={col.id}>{col.header}</TableHead>
+                <SortableHead
+                  key={col.id}
+                  label={col.header}
+                  sortKey={col.id}
+                  facets={columnFacets(items, col)}
+                  {...headProps}
+                />
               ))}
-              <TableHead>Status</TableHead>
-              <TableHead className="w-16">Age</TableHead>
+              <SortableHead label="Status" sortKey="status" filterKey={STATUS_FILTER_KEY} facets={statusFacets} {...headProps} />
+              <SortableHead label="Age" sortKey="age" className="w-20" {...headProps} />
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {items.map((res) => {
+            {visible.length === 0 && filtersActive && (
+              <TableRow>
+                <TableCell colSpan={desc.listColumns.length + 5} className="py-8 text-center">
+                  <span className="text-sm text-muted-foreground">No rows match the filters. </span>
+                  <button
+                    type="button"
+                    onClick={() => setFilters({})}
+                    className="cursor-pointer text-sm text-primary hover:underline"
+                  >
+                    Clear filters
+                  </button>
+                </TableCell>
+              </TableRow>
+            )}
+            {visible.map((res) => {
               const status = desc.getStatus(res);
               const href = detailHref(desc, res);
               return (
@@ -157,7 +312,12 @@ export function ResourceTable({
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="size-7">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-7"
+                          aria-label="Row actions"
+                        >
                           <MoreHorizontal className="size-4" />
                         </Button>
                       </DropdownMenuTrigger>
