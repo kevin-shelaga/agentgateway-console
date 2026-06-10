@@ -1,4 +1,31 @@
 import { expect, test } from "@playwright/test";
+import { execFileSync } from "node:child_process";
+
+const REQUIRED_CRDS = [
+  "agentgatewaybackends.agentgateway.dev",
+  "agentgatewaypolicies.agentgateway.dev",
+  "agentgatewayparameters.agentgateway.dev",
+  "gatewayclasses.gateway.networking.k8s.io",
+  "gateways.gateway.networking.k8s.io",
+  "httproutes.gateway.networking.k8s.io",
+  "grpcroutes.gateway.networking.k8s.io",
+];
+
+test.describe.configure({ mode: "serial" });
+
+test.beforeAll(() => {
+  const context = execFileSync("kubectl", ["config", "current-context"], { encoding: "utf8" }).trim();
+  if (!context.includes("kind")) {
+    throw new Error(`kind e2e requires a kind kube context, got ${context}`);
+  }
+
+  execFileSync("node", ["scripts/ci/render-crds.mjs", "--apply"], { stdio: "inherit" });
+  for (const crd of REQUIRED_CRDS) {
+    execFileSync("kubectl", ["wait", "--for=condition=Established", `crd/${crd}`, "--timeout=60s"], {
+      stdio: "inherit",
+    });
+  }
+});
 
 test("detects the kind cluster", async ({ request }) => {
   const response = await request.get("/api/cluster");
@@ -26,14 +53,16 @@ test("renders an empty managed resource list from the Kubernetes API", async ({ 
   await expect(page.getByText("No gateways yet")).toBeVisible({ timeout: 15_000 });
 });
 
-test("server-side dry-run rejects an invalid Gateway without persisting it", async ({ request }) => {
+test("server-side dry-run rejects an invalid Gateway without persisting it", async ({ request }, testInfo) => {
+  const name = `invalid-gateway-${testInfo.workerIndex}-${Date.now()}`;
+
   const response = await request.post("/api/dry-run", {
     data: {
       mode: "create",
       manifest: {
         apiVersion: "gateway.networking.k8s.io/v1",
         kind: "Gateway",
-        metadata: { name: "invalid-gateway", namespace: "default" },
+        metadata: { name, namespace: "default" },
         spec: {},
       },
     },
@@ -49,5 +78,5 @@ test("server-side dry-run rejects an invalid Gateway without persisting it", asy
   const list = await request.get("/api/resources/gateway.networking.k8s.io/v1/gateways?namespace=default");
   expect(list.ok()).toBeTruthy();
   const listBody = await list.json();
-  expect(listBody.items).toEqual([]);
+  expect((listBody.items ?? []).some((item) => item.metadata?.name === name)).toBe(false);
 });
