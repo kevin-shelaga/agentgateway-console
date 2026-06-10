@@ -1,0 +1,99 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  push:
+    tags:
+      - v*.*.*
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  npm:
+    if: github.event_name == 'release' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+          cache: npm
+
+      - name: Detect release version
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+
+          package_version="$(node -p "require('./package.json').version")"
+          tag_name=""
+          should_publish=false
+
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            tag_name="${RELEASE_TAG}"
+          elif [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_TYPE}" == "tag" ]]; then
+            tag_name="${GITHUB_REF_NAME}"
+          fi
+
+          if [[ -n "${tag_name}" ]]; then
+            if [[ ! "${tag_name}" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Refusing to publish non-semver tag ${tag_name}" >&2
+              exit 1
+            fi
+
+            version="${tag_name#v}"
+            if [[ "${package_version}" != "${version}" ]]; then
+              echo "package.json version ${package_version} does not match tag ${tag_name}" >&2
+              exit 1
+            fi
+
+            should_publish=true
+          else
+            version="${package_version}"
+          fi
+
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "should_publish=${should_publish}" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Check published package
+        id: npm_view
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if npm view "agentgateway-console@${VERSION}" version >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Publish package
+        if: steps.release.outputs.should_publish == 'true' && steps.npm_view.outputs.exists != 'true'
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --provenance --access public
