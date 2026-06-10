@@ -19,6 +19,17 @@ export function renderWithProviders(ui: React.ReactNode): RenderResult {
   );
 }
 
+/**
+ * A params promise React's `use()` can unwrap synchronously in tests:
+ * pre-set the internal fulfilled status so the component never suspends.
+ */
+export function resolvedParams<T>(value: T): Promise<T> {
+  const promise = Promise.resolve(value) as Promise<T> & { status: string; value: T };
+  promise.status = "fulfilled";
+  promise.value = value;
+  return promise;
+}
+
 export interface FetchRoute {
   /** Substring or RegExp matched against the request URL. */
   match: string | RegExp;

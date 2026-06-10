@@ -7,6 +7,25 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+// Node 22+ exposes a non-functional global localStorage (requires
+// --localstorage-file) that shadows jsdom's; api-client reads the stored kube
+// context on every request, so install a real in-memory one.
+const store = new Map<string, string>();
+const memoryStorage = {
+  getItem: (k: string) => store.get(k) ?? null,
+  setItem: (k: string, v: string) => void store.set(k, String(v)),
+  removeItem: (k: string) => void store.delete(k),
+  clear: () => store.clear(),
+  key: (i: number) => [...store.keys()][i] ?? null,
+  get length() {
+    return store.size;
+  },
+} as Storage;
+Object.defineProperty(globalThis, "localStorage", { value: memoryStorage, configurable: true });
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "localStorage", { value: memoryStorage, configurable: true });
+}
+
 // jsdom is missing a few APIs that Radix and CodeMirror expect.
 if (typeof window !== "undefined") {
   window.HTMLElement.prototype.scrollIntoView ??= () => {};
