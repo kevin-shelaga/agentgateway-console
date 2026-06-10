@@ -3,10 +3,8 @@ import { ALL_RESOURCES } from "../registry";
 import type { K8sResource, ResourceDescriptor } from "../types";
 import { parseK8sError } from "./errors";
 
-/** URL segment used for the core API group (empty group can't be a path segment). */
-export const CORE_GROUP_SEGMENT = "core";
-/** URL segment used in place of a namespace for cluster-scoped resources. */
-export const CLUSTER_SEGMENT = "_cluster";
+export { CLUSTER_SEGMENT, CORE_GROUP_SEGMENT } from "../api-client";
+import { CORE_GROUP_SEGMENT } from "../api-client";
 
 /**
  * Resolves a URL triple to a managed descriptor. Anything outside the
