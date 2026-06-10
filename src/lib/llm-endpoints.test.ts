@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { defaultModel, resolveLlmEndpoints } from "./llm-endpoints";
+import { defaultModel, resolveLlmEndpoints, suggestMcpUrl } from "./llm-endpoints";
 import { aiBackend, gateway, httpRoute } from "@/test/fixtures";
 import type { K8sResource } from "./types";
 
@@ -34,6 +34,16 @@ describe("resolveLlmEndpoints", () => {
     const tcpGw: K8sResource = JSON.parse(JSON.stringify(gateway));
     tcpGw.spec!.listeners = [{ name: "tcp", protocol: "TCP", port: 9000 }];
     expect(resolveLlmEndpoints(aiBackend, [httpRoute], [tcpGw])).toEqual([]);
+  });
+});
+
+describe("suggestMcpUrl", () => {
+  it("appends /mcp to the normalized path prefix", () => {
+    const [endpoint] = resolveLlmEndpoints(aiBackend, [httpRoute], [gateway]);
+    expect(suggestMcpUrl(endpoint)).toBe("http://4.229.185.215/mcp");
+    expect(suggestMcpUrl({ ...endpoint, pathPrefix: "/agents/" })).toBe(
+      "http://4.229.185.215/agents/mcp",
+    );
   });
 });
 

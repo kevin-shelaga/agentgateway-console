@@ -30,6 +30,19 @@ async function pickBackend(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("PlaygroundPage", () => {
+  it("defaults to the LLM tab and switches to the MCP panel", async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
+    setup();
+    renderWithProviders(<PlaygroundPage />);
+
+    expect(await screen.findByRole("tab", { name: "LLM", selected: true })).toBeInTheDocument();
+    expect(screen.getByText("Playground")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "MCP" }));
+    // No MCP backends in the fixtures, so the MCP panel shows its empty placeholder.
+    expect(await screen.findByText("No MCP backends found")).toBeInTheDocument();
+  });
+
   it("lists only AI backends and seeds url/model from the resolved endpoint", async () => {
     const user = userEvent.setup({ pointerEventsCheck: 0 });
     setup();

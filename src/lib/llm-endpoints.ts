@@ -102,3 +102,12 @@ export function suggestUrl(endpoint: LlmEndpoint): string {
   const prefix = endpoint.pathPrefix.replace(/\/$/, "");
   return `${endpoint.url}${prefix}/v1/chat/completions`;
 }
+
+/**
+ * Sensible MCP URL for an endpoint (always user-editable). agentgateway
+ * serves MCP at the route path; /mcp is the common default suffix.
+ */
+export function suggestMcpUrl(endpoint: LlmEndpoint): string {
+  const prefix = endpoint.pathPrefix.replace(/\/$/, "");
+  return `${endpoint.url}${prefix}/mcp`;
+}
