@@ -15,8 +15,15 @@ test.describe.configure({ mode: "serial" });
 
 test.beforeAll(() => {
   const context = execFileSync("kubectl", ["config", "current-context"], { encoding: "utf8" }).trim();
-  if (!context.includes("kind")) {
+  if (!context.startsWith("kind-")) {
     throw new Error(`kind e2e requires a kind kube context, got ${context}`);
+  }
+
+  const kindNodes = execFileSync("kubectl", ["get", "nodes", "-l", "kind.x-k8s.io/node", "-o", "name"], {
+    encoding: "utf8",
+  }).trim();
+  if (!kindNodes) {
+    throw new Error(`kind e2e requires kind-labeled nodes in context ${context}`);
   }
 
   execFileSync("node", ["scripts/ci/render-crds.mjs", "--apply"], { stdio: "inherit" });
