@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
-import { stringify } from "yaml";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "../..");
@@ -90,7 +89,7 @@ function toCrd(required) {
 }
 
 function renderYaml() {
-  return `${REQUIRED_CRDS.map((required) => stringify(toCrd(required))).join("---\n")}`;
+  return `${REQUIRED_CRDS.map((required) => JSON.stringify(toCrd(required), null, 2)).join("\n---\n")}\n`;
 }
 
 function applyYaml(yaml) {
