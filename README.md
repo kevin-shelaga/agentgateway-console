@@ -16,7 +16,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-Gateway%20API-326ce5?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io)
 
-[Features](#-features) · [Quickstart](#-quickstart) · [Deployment](#-deployment) · [Architecture](#-architecture) · [Development](#-development)
+[Features](#-features) · [Compatibility](#-version-compatibility) · [Quickstart](#-quickstart) · [Deployment](#-deployment) · [Architecture](#-architecture) · [Development](#-development)
 
 </div>
 
@@ -40,6 +40,20 @@ The [agentgateway](https://github.com/agentgateway/agentgateway) project ships a
 
 > [!NOTE]
 > Namespaces, Services, and Secrets are read **names-only** to power picker dropdowns — secret payloads never leave the server.
+
+## 🧭 Version compatibility
+
+| Component | Supported | Notes |
+|---|---|---|
+| [agentgateway](https://github.com/agentgateway/agentgateway) | **v1.0.0+** | Every release since v1.0.0 ships the `agentgateway.dev/v1alpha1` CRDs the console manages |
+| [Gateway API](https://gateway-api.sigs.k8s.io) | **v1.1+** (v1.5.x recommended) | The console uses only `v1` kinds; `GRPCRoute` reached `v1` in Gateway API 1.1. agentgateway itself installs and tests against 1.5.x |
+| Kubernetes | Whatever your Gateway API release supports | Upstream Gateway API supports the [five most recent Kubernetes minors](https://gateway-api.sigs.k8s.io/concepts/versioning/). The console itself only needs CRD reads and server-side dry-run |
+| Node.js (local dev) | **20+** | The Docker image runs Node 22 |
+
+The console is deliberately **version-tolerant**: validation schemas are read live from the CRDs installed in your cluster, so when a new agentgateway release adds fields, the editor and validation pick them up immediately — no console upgrade needed. The bundled fallback schemas (used only when the cluster can't serve CRDs) currently track agentgateway `main` as of 2026-06-09; refresh them anytime with `node scripts/extract-schemas.mjs`.
+
+> [!IMPORTANT]
+> The `agentgateway.dev` API group is still **v1alpha1** — breaking changes upstream are possible between agentgateway minor versions. Because schemas are cluster-sourced, the YAML editor and validation will follow such changes automatically, but the guided forms cover the spec as of the bundled snapshot; anything newer is still editable through YAML.
 
 ## ✨ Features
 

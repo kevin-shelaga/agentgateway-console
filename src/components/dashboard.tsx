@@ -11,6 +11,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClusterInfo, useResourceList } from "@/lib/hooks";
+import {
+  aiProviders,
+  findConfigIssues,
+  policyBreakdown,
+  protocolDistribution,
+  type ConfigIssue,
+} from "@/lib/insights";
 import { backendType, getResource } from "@/lib/registry";
 import type { K8sResource, ResourceDescriptor, StatusSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -95,12 +102,14 @@ export function Dashboard() {
   const grpcroutesDesc = getResource("grpcroutes")!;
   const backendsDesc = getResource("backends")!;
   const policiesDesc = getResource("policies")!;
+  const gatewayclassesDesc = getResource("gatewayclasses")!;
 
   const gateways = useResourceList(gatewaysDesc);
   const httproutes = useResourceList(httproutesDesc);
   const grpcroutes = useResourceList(grpcroutesDesc);
   const backends = useResourceList(backendsDesc);
   const policies = useResourceList(policiesDesc);
+  const gatewayclasses = useResourceList(gatewayclassesDesc);
 
   const withStatus = (desc: ResourceDescriptor, items: K8sResource[] | undefined) =>
     (items ?? []).map((res) => ({ res, status: desc.getStatus(res) }));
@@ -128,6 +137,31 @@ export function Dashboard() {
     ];
     return all.filter((i) => i.status.state === "Degraded");
   }, [gatewayItems, routeItems, backendItems, policyItems, gatewaysDesc, httproutesDesc, grpcroutesDesc, backendsDesc, policiesDesc]);
+
+  const allListsLoaded =
+    !!gateways.data &&
+    !!httproutes.data &&
+    !!grpcroutes.data &&
+    !!backends.data &&
+    !!policies.data &&
+    !!gatewayclasses.data;
+
+  const configIssues = useMemo<ConfigIssue[]>(() => {
+    if (!allListsLoaded) return [];
+    return findConfigIssues({
+      gateways: gateways.data!,
+      httproutes: httproutes.data!,
+      grpcroutes: grpcroutes.data!,
+      backends: backends.data!,
+      policies: policies.data!,
+      gatewayclasses: gatewayclasses.data!,
+    });
+  }, [allListsLoaded, gateways.data, httproutes.data, grpcroutes.data, backends.data, policies.data, gatewayclasses.data]);
+
+  const protocols = useMemo(() => protocolDistribution(gateways.data ?? []), [gateways.data]);
+  const protocolMax = Math.max(1, ...protocols.map((p) => p.count));
+  const policyStats = useMemo(() => policyBreakdown(policies.data ?? []), [policies.data]);
+  const providers = useMemo(() => aiProviders(backends.data ?? []), [backends.data]);
 
   const backendsByType = useMemo(() => {
     const counts = new Map<string, number>();
@@ -310,28 +344,150 @@ export function Dashboard() {
         </Card>
       </div>
 
-      {/* Needs attention */}
-      <Card className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500" style={{ animationDelay: "420ms" }}>
+      {/* Protocol distribution · Policy overview · AI providers */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Card className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500" style={{ animationDelay: "380ms" }}>
+          <CardHeader>
+            <CardTitle className="text-sm">Listener protocols</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {protocols.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">No listeners.</p>
+            ) : (
+              <ul className="space-y-3">
+                {protocols.map(({ protocol, count }, i) => (
+                  <li key={protocol} className="space-y-1">
+                    <div className="flex items-baseline justify-between text-xs">
+                      <span className="k8s-id font-medium">{protocol}</span>
+                      <span className="text-muted-foreground tabular-nums">{count}</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${(count / protocolMax) * 100}%`,
+                          background: `var(--chart-${(i % 5) + 1})`,
+                        }}
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500" style={{ animationDelay: "440ms" }}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm">Policy overview</CardTitle>
+            <Button asChild variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground">
+              <Link href="/resources/policies">
+                All policies <ArrowRight className="size-3.5" />
+              </Link>
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {policyStats.sections.length === 0 && policyStats.targets.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No policies configured.
+              </p>
+            ) : (
+              <>
+                <div className="space-y-2">
+                  {policyStats.sections.map(({ section, count }) => (
+                    <div key={section} className="flex items-center justify-between text-xs">
+                      <span className="capitalize">{section} policies</span>
+                      <Badge variant="secondary" className="tabular-nums">
+                        {count}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+                {policyStats.targets.length > 0 && (
+                  <div className="border-t pt-3">
+                    <p className="mb-2 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+                      By target
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {policyStats.targets.map(({ kind, count }) => (
+                        <Badge key={kind} variant="outline" className="gap-1 font-normal">
+                          {kind}
+                          <span className="text-muted-foreground tabular-nums">{count}</span>
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500 md:col-span-2 xl:col-span-1" style={{ animationDelay: "500ms" }}>
+          <CardHeader>
+            <CardTitle className="text-sm">AI providers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {providers.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">
+                No AI backends yet.{" "}
+                <Link href="/resources/backends/new" className="text-primary hover:underline">
+                  Create one
+                </Link>
+                .
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {providers.map(({ provider, count, models }) => (
+                  <li key={provider} className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs font-medium">{provider}</p>
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {models.slice(0, 4).map((model) => (
+                          <Badge key={model} variant="secondary" className="font-mono text-[10px] font-normal">
+                            {model}
+                          </Badge>
+                        ))}
+                        {models.length > 4 && (
+                          <Badge variant="outline" className="text-[10px] font-normal">
+                            +{models.length - 4}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                    <Badge variant="secondary" className="shrink-0 tabular-nums">
+                      {count}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Needs attention: condition failures + configuration completeness */}
+      <Card className="animate-in fade-in slide-in-from-bottom-2 fill-mode-both duration-500" style={{ animationDelay: "560ms" }}>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             Needs attention
-            {attention.length > 0 && (
+            {attention.length + configIssues.length > 0 && (
               <Badge variant="destructive" className="tabular-nums">
-                {attention.length}
+                {attention.length + configIssues.length}
               </Badge>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {attention.length === 0 ? (
-            <p className="flex items-center gap-2 py-2 text-sm text-muted-foreground">
-              <CheckCircle2 className="size-4 text-success" />
-              Every resource with reported status is healthy.
+          {attention.length === 0 && configIssues.length === 0 ? (
+            <p className="flex items-center gap-2 py-2 text-sm text-success">
+              <CheckCircle2 className="size-4" />
+              Configuration looks good — all conditions are healthy and every reference resolves.
             </p>
           ) : (
             <ul className="divide-y divide-border/60">
               {attention.map(({ res, status, desc }) => (
-                <li key={`${res.kind}/${res.metadata.namespace}/${res.metadata.name}`}>
+                <li key={`cond/${res.kind}/${res.metadata.namespace}/${res.metadata.name}`}>
                   <Link
                     href={detailHref(desc, res)}
                     className={cn(
@@ -351,6 +507,38 @@ export function Dashboard() {
                       </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">
                         {status.message}
+                      </span>
+                    </span>
+                  </Link>
+                </li>
+              ))}
+              {configIssues.map((issue, i) => (
+                <li key={`cfg/${issue.kind}/${issue.namespace}/${issue.name}/${i}`}>
+                  <Link
+                    href={`/resources/${issue.descId}/${issue.namespace ?? "_cluster"}/${issue.name}`}
+                    className="flex items-start gap-3 py-2.5 transition-colors hover:bg-accent/40"
+                  >
+                    <span
+                      className={cn(
+                        "status-dot mt-1.5",
+                        issue.severity === "warning" ? "status-dot-pending" : "status-dot-unknown",
+                      )}
+                    />
+                    <span className="min-w-0">
+                      <span className="flex flex-wrap items-baseline gap-x-2">
+                        <span className="k8s-id font-medium">
+                          {issue.namespace ? `${issue.namespace}/` : ""}
+                          {issue.name}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] font-normal">
+                          {issue.kind}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px] font-normal">
+                          config
+                        </Badge>
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">
+                        {issue.message}
                       </span>
                     </span>
                   </Link>
