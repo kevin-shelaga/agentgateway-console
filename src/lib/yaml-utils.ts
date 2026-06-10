@@ -18,7 +18,7 @@ export function toDisplayYaml(res: K8sResource): string {
  * Editing surface: strip status and server-managed metadata, keep identity
  * fields the apiserver needs on update (resourceVersion).
  */
-export function toEditableYaml(res: K8sResource): string {
+export function toEditableResource(res: K8sResource): K8sResource {
   const clone = JSON.parse(JSON.stringify(res)) as K8sResource;
   delete clone.status;
   const metadata = clone.metadata as unknown as Record<string, unknown>;
@@ -30,7 +30,11 @@ export function toEditableYaml(res: K8sResource): string {
     delete annotations["kubectl.kubernetes.io/last-applied-configuration"];
     if (Object.keys(annotations).length === 0) delete metadata.annotations;
   }
-  return stringify(clone, { indent: 2, lineWidth: 120 });
+  return clone;
+}
+
+export function toEditableYaml(res: K8sResource): string {
+  return stringify(toEditableResource(res), { indent: 2, lineWidth: 120 });
 }
 
 export function parseYamlResource(text: string): K8sResource {
