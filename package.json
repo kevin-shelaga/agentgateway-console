@@ -42,5 +42,10 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^4.1.8"
-  }
+  },
+  "bin": {
+    "agentgateway-console": "./bin/agentgateway-console.mjs"
+  },
+  "description": "Kubernetes console for agentgateway — dashboards and validated clickops for Gateway API and agentgateway.dev CRDs",
+  "license": "Apache-2.0"
 }

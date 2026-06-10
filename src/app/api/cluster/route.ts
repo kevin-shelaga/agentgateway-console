@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCoreClient, getKubeConfig } from "@/lib/k8s/client";
+import { getCoreClient, getKubeConfig, isInCluster } from "@/lib/k8s/client";
 import { contextFrom } from "@/lib/k8s/registry-server";
 import { parseK8sError } from "@/lib/k8s/errors";
 
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     return NextResponse.json({
       connected: false,
-      context: context ?? null,
+      context: isInCluster() ? "in-cluster" : (context ?? null),
       error: parseK8sError(err).message,
     });
   }

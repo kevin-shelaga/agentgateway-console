@@ -1,70 +1,257 @@
 <div align="center">
-  <img src="public/favicon.svg" alt="agentgateway" width="64" />
-  <h1>agentgateway console</h1>
-  <p><b>Kubernetes clickops for <a href="https://agentgateway.dev">agentgateway</a></b> — dashboards, resource browsing, and fully validated create/edit/delete for everything you'd otherwise manage with <code>kubectl apply</code>.</p>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="public/banner-dark.svg">
+  <source media="(prefers-color-scheme: light)" srcset="public/banner-light.svg">
+  <img src="public/banner-light.svg" alt="agentgateway" width="520">
+</picture>
+
+# agentgateway console
+
+**Kubernetes clickops for [agentgateway](https://agentgateway.dev)** — dashboards, resource browsing, and fully validated create / edit / delete for everything you'd otherwise manage with `kubectl apply`.
+
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js&logoColor=white)](https://nextjs.org)
+[![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)](https://react.dev)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-Gateway%20API-326ce5?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io)
+
+[Features](#-features) · [Quickstart](#-quickstart) · [Deployment](#-deployment) · [Architecture](#-architecture) · [Development](#-development)
+
 </div>
 
 ---
 
-The [agentgateway](https://github.com/agentgateway/agentgateway) project ships a UI for its standalone (file-config) mode, but the Kubernetes deployment mode — driven by Gateway API resources plus the `agentgateway.dev` CRDs — has been kubectl-only. This console fills that gap.
+## Why this exists
 
-## What it manages
+The [agentgateway](https://github.com/agentgateway/agentgateway) project ships a UI for its standalone (file-config) mode, but the **Kubernetes deployment mode** — driven by Gateway API resources plus the `agentgateway.dev` CRDs — has been kubectl-only. This console fills that gap: a purpose-built control panel for the seven kinds that define an agentgateway deployment, with validation driven by the CRDs themselves so the UI can never drift from the API.
 
-| Kind | Group | Purpose |
+## 📦 What it manages
+
+| Kind | API group | Purpose |
 |---|---|---|
-| `GatewayClass` | gateway.networking.k8s.io | Gateway implementations + parameters |
-| `Gateway` | gateway.networking.k8s.io | Listeners, ports, TLS |
-| `HTTPRoute` / `GRPCRoute` | gateway.networking.k8s.io | Routing rules |
-| `AgentgatewayBackend` | agentgateway.dev | AI/LLM providers, MCP servers, static upstreams |
-| `AgentgatewayPolicy` | agentgateway.dev | Traffic/frontend/backend policy attachment |
-| `AgentgatewayParameters` | agentgateway.dev | Data plane deployment settings |
+| `GatewayClass` | `gateway.networking.k8s.io/v1` | Gateway implementations + parameters |
+| `Gateway` | `gateway.networking.k8s.io/v1` | Listeners, ports, TLS |
+| `HTTPRoute` | `gateway.networking.k8s.io/v1` | HTTP routing rules |
+| `GRPCRoute` | `gateway.networking.k8s.io/v1` | gRPC routing rules |
+| `AgentgatewayBackend` | `agentgateway.dev/v1alpha1` | AI/LLM providers, MCP servers, static upstreams |
+| `AgentgatewayPolicy` | `agentgateway.dev/v1alpha1` | Traffic / frontend / backend policy attachment |
+| `AgentgatewayParameters` | `agentgateway.dev/v1alpha1` | Data plane deployment settings |
 
-Namespaces, Services, and Secrets are read **names-only** to power picker dropdowns — secret payloads never leave the server.
+> [!NOTE]
+> Namespaces, Services, and Secrets are read **names-only** to power picker dropdowns — secret payloads never leave the server.
 
-## Features
+## ✨ Features
 
-- **Dashboard** — gateway fleet health from status conditions, backend breakdown, degraded-resource triage with deep links.
-- **List & detail pages** — namespace filter, search, status badges, condition timelines, and a resolved reference graph (which routes attach to a gateway, which policies target what).
-- **Split form ⇄ YAML editor** — guided forms for the common cases, a schema-aware YAML editor for 100% of the spec. Both edit the same document, synced live in both directions.
-- **Three-layer validation, driven by the CRDs themselves**:
-  1. **Structural** — AJV validates against the CRD `openAPIV3Schema` as you type (schemas read live from the cluster, bundled fallback).
-  2. **Server dry-run** — every save first runs `dryRun=All` so CEL `x-kubernetes-validations` rules and admission webhooks execute *without persisting*; failures map back to fields.
-  3. **Apply** — only after dry-run passes.
-- **Kubeconfig context switcher** — operate any cluster your kubeconfig can reach; in-cluster ServiceAccount config is used automatically when deployed to Kubernetes.
+- 📊 **Dashboard** — gateway fleet health computed from status conditions, backend breakdown by type, and a "needs attention" triage list with deep links to every degraded resource.
+- 🗂️ **List & detail pages** — namespace filter, text search, status badges, condition timelines, and a resolved reference graph (which routes attach to a gateway, which policies target what).
+- ✏️ **Split form ⇄ YAML editor** — guided forms for the common cases, a schema-aware CodeMirror YAML editor for 100% of the spec. Both edit the same document, synced live in both directions.
+- 🛡️ **Three-layer validation, driven by the CRDs themselves** — structural errors as you type, CEL and admission webhook errors before anything persists (see [How validation works](#how-validation-works)).
+- 🔄 **Kubeconfig context switcher** — operate any cluster your kubeconfig can reach from the widget at the bottom of the sidebar; in-cluster deployments are hard-locked to their own cluster for isolation.
+- 🌙 **Dark-mode-first UI** — agentgateway brand identity on shadcn/ui primitives, with a light theme one toggle away.
 
-## Quickstart
+### How validation works
+
+Every save passes through three gates, in order — the first two are free to fail, the cluster only ever sees valid writes:
+
+```mermaid
+flowchart LR
+    A["⌨️ You type"] --> B["1 · Structural<br/>AJV vs CRD openAPIV3Schema<br/><i>instant, as-you-type</i>"]
+    B --> C["2 · Server dry-run<br/>dryRun=All — CEL rules +<br/>admission webhooks execute<br/><i>nothing persists</i>"]
+    C --> D["3 · Apply<br/><i>only after dry-run passes</i>"]
+    C -. "errors map back<br/>to form fields" .-> A
+    style D fill:#7734be,color:#fff
+```
+
+Schemas are read live from the cluster's installed CRDs, with bundled fallbacks when the cluster is unreachable or the CRDs aren't installed yet.
+
+## 🚀 Quickstart
+
+**Prerequisites:** Node.js 20+ and a kubeconfig (`~/.kube/config`) pointing at a cluster — ideally one with the [agentgateway](https://github.com/agentgateway/agentgateway) and [Gateway API](https://gateway-api.sigs.k8s.io) CRDs installed.
 
 ```bash
 npm install
-npm run dev          # http://localhost:3000
+npm run dev          # → http://localhost:3000
 ```
 
-The server-side API routes load your default kubeconfig (`~/.kube/config`). Switch contexts from the widget at the bottom of the sidebar.
+That's it. The server-side API routes load your default kubeconfig; switch contexts from the widget at the bottom of the sidebar.
+
+### CLI
+
+The repo ships a launcher (`bin` of the npm package) that builds once, serves the production bundle on **loopback only** (it holds your kubeconfig credentials), and opens the browser:
 
 ```bash
-npm test             # vitest unit tests
-npm run build        # production build
+npx agentgateway-console                       # from the repo: npx .
+npx agentgateway-console -p 4000 -c my-context # pick port + starting context
+npx agentgateway-console --kubeconfig ~/.kube/staging --no-open
+```
+
+### Configuration
+
+| Variable | Default | Effect |
+|---|---|---|
+| `KUBECONFIG` | `~/.kube/config` | Standard kubeconfig path override |
+| `AGC_CONTEXT` | kubeconfig default | Start on a specific kubeconfig context |
+| `AGC_IN_CLUSTER` | auto-detected | Force in-cluster mode (normally detected via `KUBERNETES_SERVICE_HOST`) |
+| `PORT` | `3000` | Server port (production / Docker) |
+
+## ☸️ Deployment
+
+### Helm (recommended)
+
+The chart in [`charts/agentgateway-console`](charts/agentgateway-console) deploys one console per cluster, **hard-locked to that cluster** — the context switcher is removed and the context header is ignored server-side:
+
+```bash
+helm install console ./charts/agentgateway-console -n agentgateway-system --create-namespace
+kubectl -n agentgateway-system port-forward svc/console-agentgateway-console 3000:80
+```
+
+The Service is `ClusterIP` by default — no external exposure. An Ingress template exists but is disabled; if you enable it, put authentication in front (see the warning below). RBAC (least-privilege ClusterRole) and the ServiceAccount are created by the chart; set `rbac.create=false` / `serviceAccount.create=false` to bring your own.
+
+### Docker
+
+The multi-stage [`Dockerfile`](Dockerfile) builds a minimal standalone server running as a non-root user:
+
+```bash
+docker build -t agentgateway-console .
+docker run -p 3000:3000 -v ~/.kube:/home/agc/.kube:ro agentgateway-console
+```
+
+> [!TIP]
+> If your kubeconfig points at `localhost` (kind, minikube, k3d), the container can't reach it through the bridge network — add `--network host` on Linux, or deploy in-cluster instead.
+
+### In-cluster
+
+When `KUBERNETES_SERVICE_HOST` is set, the BFF automatically uses the pod's ServiceAccount and locks itself to the surrounding cluster (no context switching). The ServiceAccount needs read access to everything the console shows, write access to the managed kinds, and `get` on CRDs for live schemas:
+
+<details>
+<summary><b>Example RBAC + Deployment manifest</b></summary>
+
+```yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agentgateway-console
+  namespace: agentgateway-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: agentgateway-console
+rules:
+  # Managed kinds — full read/write
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources: ["gatewayclasses", "gateways", "httproutes", "grpcroutes"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  - apiGroups: ["agentgateway.dev"]
+    resources: ["agentgatewaybackends", "agentgatewaypolicies", "agentgatewayparameters"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  # Picker support — names only, read-only
+  - apiGroups: [""]
+    resources: ["namespaces", "services", "secrets"]
+    verbs: ["get", "list"]
+  # Live CRD schemas for validation
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: agentgateway-console
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: agentgateway-console
+subjects:
+  - kind: ServiceAccount
+    name: agentgateway-console
+    namespace: agentgateway-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: agentgateway-console
+  namespace: agentgateway-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: agentgateway-console }
+  template:
+    metadata:
+      labels: { app: agentgateway-console }
+    spec:
+      serviceAccountName: agentgateway-console
+      containers:
+        - name: console
+          image: agentgateway-console:latest
+          ports:
+            - containerPort: 3000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: agentgateway-console
+  namespace: agentgateway-system
+spec:
+  selector: { app: agentgateway-console }
+  ports:
+    - port: 80
+      targetPort: 3000
+```
+
+</details>
+
+> [!WARNING]
+> The console performs no authentication of its own — it acts with the full power of its kubeconfig identity or ServiceAccount. Don't expose it publicly; put it behind your ingress auth, `kubectl port-forward`, or a VPN.
+
+## 🏗 Architecture
+
+A single Next.js app in three layers — the browser never talks to the Kubernetes API directly:
+
+```mermaid
+flowchart LR
+    subgraph Browser
+        UI["React UI<br/>dashboard · lists · editor"]
+    end
+    subgraph "Next.js server (BFF)"
+        API["API routes<br/><code>/api/resources · /api/dry-run<br/>/api/schemas · /api/contexts</code>"]
+        G["GVK allowlist<br/>secret stripping<br/>dry-run proxy"]
+    end
+    K8S[("Kubernetes API<br/>kubeconfig or<br/>in-cluster SA")]
+    UI -- "TanStack Query" --> API
+    API --- G
+    G -- "@kubernetes/client-node" --> K8S
+    style K8S fill:#326ce5,color:#fff
+```
+
+The UI is **registry-driven**: one descriptor per kind supplies columns, status extraction, reference resolution, and templates — so list, detail, and edit pages are fully generic, and only the guided forms are kind-specific.
+
+| Module | Role |
+|---|---|
+| [`src/lib/registry.ts`](src/lib/registry.ts) | One descriptor per kind — drives the generic list/detail/edit pages |
+| [`src/lib/conditions.ts`](src/lib/conditions.ts) | Flattens Gateway listener + route parent conditions into a health summary |
+| [`src/lib/validation.ts`](src/lib/validation.ts) | AJV over CRD schemas (the structural layer; CEL runs server-side via dry-run) |
+| [`src/lib/k8s/`](src/lib/k8s) | Kubeconfig/in-cluster client factory, typed K8s error parsing |
+| [`src/components/editor/resource-editor.tsx`](src/components/editor/resource-editor.tsx) | Split form/YAML editor and the dry-run-gated save pipeline |
+| [`src/components/forms/`](src/components/forms) | Guided forms for all seven managed kinds |
+| [`src/app/api/`](src/app/api) | The BFF: resource CRUD, dry-run, schemas, contexts, cluster health |
+
+## 🛠 Development
+
+```bash
+npm run dev      # dev server with hot reload
+npm test         # vitest unit tests
+npm run build    # production build (standalone output)
+npm start        # serve the production build
+
 node scripts/extract-schemas.mjs   # refresh bundled CRD schema fallbacks
 ```
 
-### Running in-cluster
+Built with [Next.js 16](https://nextjs.org) (App Router) · [React 19](https://react.dev) · [Tailwind CSS 4](https://tailwindcss.com) · [shadcn/ui](https://ui.shadcn.com) · [CodeMirror 6](https://codemirror.net) · [TanStack Query](https://tanstack.com/query) · [AJV](https://ajv.js.org) · [@kubernetes/client-node](https://github.com/kubernetes-client/javascript).
 
-When `KUBERNETES_SERVICE_HOST` is set, the BFF uses the pod's ServiceAccount. The ServiceAccount needs `get/list` on the kinds above plus `create/update/delete` on the writable ones, and `get` on `customresourcedefinitions` for live schemas.
+Design docs live in [`docs/superpowers/`](docs/superpowers) — the [design spec](docs/superpowers/specs/2026-06-10-agentgateway-console-design.md) is the best place to start for scope and rationale.
 
-## Architecture
+## 📄 License
 
-```
-Browser ──> Next.js API routes (BFF) ──> Kubernetes API
-              │  GVK allowlist · secret stripping · dry-run proxy
-              │  /api/schemas — live CRD openAPIV3Schema (bundled fallback)
-              └  @kubernetes/client-node (kubeconfig or in-cluster)
-```
-
-- `src/lib/registry.ts` — one descriptor per kind (columns, status extraction, templates) drives the generic list/detail/edit pages.
-- `src/lib/conditions.ts` — flattens Gateway listener + route parent conditions into a health summary.
-- `src/lib/validation.ts` — AJV over CRD schemas (the structural layer; CEL rules run server-side via dry-run).
-- `src/components/editor/resource-editor.tsx` — the split form/YAML editor and the dry-run-gated save pipeline.
-
-## License
-
-Apache-2.0 — same as agentgateway. Brand assets (logo) belong to the agentgateway project.
+[Apache-2.0](LICENSE) — same as agentgateway. Brand assets (logo, banner) belong to the [agentgateway](https://github.com/agentgateway/agentgateway) project.
