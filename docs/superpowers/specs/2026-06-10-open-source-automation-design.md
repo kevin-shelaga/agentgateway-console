@@ -45,11 +45,34 @@ Checks:
 1. Install dependencies with `npm ci`.
 2. Run TypeScript-aware production build with `npm run build`.
 3. Run Vitest with coverage thresholds.
-4. Run Playwright end-to-end smoke tests.
+4. Run Playwright end-to-end smoke tests that do not require Kubernetes.
 5. Build the Docker image locally as a packaging smoke test, without pushing.
 
 The PR workflow must not require secrets. This keeps forked PRs testable and avoids
 exposing publish credentials to untrusted code.
+
+### Kind Integration E2E
+
+`.github/workflows/kind-e2e.yml`
+
+Triggers:
+
+- `push` to `main`
+- `pull_request` from branches in the same repository
+- Manual `workflow_dispatch`
+
+Behavior:
+
+- Creates a local kind cluster in GitHub Actions.
+- Installs Gateway API CRDs and agentgateway CRDs.
+- Starts the console with a kubeconfig pointed at the kind cluster.
+- Runs a separate Playwright project for Kubernetes-backed e2e tests.
+- Verifies cluster-aware flows such as the cluster status endpoint, schema loading
+  from live CRDs, empty resource lists, and server-side dry-run validation.
+
+This workflow should avoid running automatically for forked pull requests because
+it executes cluster setup code from the submitted branch. Forked PRs still receive
+the credential-free smoke e2e coverage from `ci.yml`.
 
 ### Container Publishing
 
@@ -102,16 +125,24 @@ files with a `files` list.
 
 Add Playwright for browser-level smoke coverage.
 
-The first suite should be intentionally small:
+The credential-free suite should be intentionally small:
 
 - The app boots successfully.
 - The dashboard shell renders.
 - Navigation to at least one resource list route works.
 - The no-cluster or cluster-unreachable state renders without crashing.
 
-The e2e suite should not require a live Kubernetes cluster. Public CI needs stable,
-credential-free tests; Kubernetes integration testing can be added later as a
-separate trusted workflow if needed.
+Add a second Playwright project for kind-backed integration coverage:
+
+- The app detects the kind cluster.
+- Live CRD schema loading works.
+- Managed resource list pages render against the real Kubernetes API.
+- Invalid dry-run apply requests return validation failures without persisting
+  resources.
+
+Public CI needs stable, credential-free tests for all PRs. Kind-backed Kubernetes
+integration tests should run in trusted contexts where the repository controls the
+branch code being executed.
 
 ## Package Scripts
 
@@ -119,6 +150,8 @@ Add scripts that make local and CI behavior obvious:
 
 - `test:coverage` runs Vitest with coverage thresholds.
 - `test:e2e` runs Playwright.
+- `test:e2e:kind` runs the kind-backed Playwright project and assumes a working
+  kubeconfig in the environment.
 - `test:e2e:ui` opens Playwright UI locally.
 - `check` runs the aggregate checks expected for PR readiness.
 
@@ -143,11 +176,12 @@ Required repository configuration:
 - Workflow permissions allow package writes for the container workflow.
 - `NPM_TOKEN` repository secret for npm publishing.
 
-No secrets are required for PR checks.
+No secrets are required for PR checks. Kind e2e also avoids secrets, but it should
+only run automatically for trusted repository branches because it provisions a
+local cluster and executes setup scripts from the branch.
 
 ## Out of Scope
 
-- Full Kubernetes integration tests against a real cluster.
 - Automated semantic version selection.
 - Changesets or semantic-release.
 - Signing container images with cosign.
@@ -160,6 +194,9 @@ Those can be added once the baseline open-source release loop is working.
 - **npm name collision:** switch to scoped package if the unscoped name is taken.
 - **Package too large:** use `npm pack --dry-run` in CI and a narrow `files` list.
 - **Fork PR secret exposure:** never run publish workflows on `pull_request`.
+- **Fork PR cluster setup risk:** run kind e2e automatically only for trusted
+  repository branches, while keeping smoke e2e on all PRs.
 - **Accidental `latest` image drift:** only tag `latest` from semver release tags.
 - **E2E flakiness:** keep the first Playwright suite credential-free and focused
-  on boot/navigation/error-state behavior.
+  on boot/navigation/error-state behavior; keep kind e2e scoped to CRD and API
+  flows that are deterministic in a fresh cluster.
