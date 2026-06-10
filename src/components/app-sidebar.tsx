@@ -1,6 +1,6 @@
 "use client";
 
-import { LayoutDashboard } from "lucide-react";
+import { FlaskConical, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AgentgatewayLogo } from "@/components/agentgateway-logo";
@@ -82,6 +82,18 @@ export function AppSidebar() {
                   <Link href="/">
                     <LayoutDashboard />
                     <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={pathname === "/playground"}
+                  tooltip="Playground"
+                >
+                  <Link href="/playground">
+                    <FlaskConical />
+                    <span>Playground</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>

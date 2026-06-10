@@ -27,7 +27,7 @@ function makePod(opts: {
   name: string;
   namespace?: string;
   labels?: Record<string, string>;
-  containers?: V1Pod["spec"] extends { containers: infer C } ? C : never;
+  containers?: NonNullable<V1Pod["spec"]>["containers"];
   containerStatuses?: NonNullable<V1Pod["status"]>["containerStatuses"];
   phase?: string;
   node?: string;

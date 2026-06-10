@@ -43,7 +43,7 @@ export interface FetchRoute {
  * URLs 404. Returns the spy for call assertions.
  */
 export function mockFetch(routes: FetchRoute[]) {
-  const spy = vi.fn(async (input: RequestInfo | URL) => {
+  const spy = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
     const url =
       typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
     for (let i = routes.length - 1; i >= 0; i--) {

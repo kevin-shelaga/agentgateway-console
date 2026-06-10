@@ -161,6 +161,30 @@ export async function fetchInfra(): Promise<InfraResponse> {
   return request<InfraResponse>("/api/infra");
 }
 
+export interface LlmTestPayload {
+  url: string;
+  hostname?: string;
+  authHeader?: { name: string; value: string };
+  body: unknown;
+  insecureTls?: boolean;
+}
+
+export interface LlmTestResult {
+  ok: boolean;
+  status: number;
+  statusText: string;
+  durationMs: number;
+  contentType?: string | null;
+  body: unknown;
+}
+
+export async function testLlm(payload: LlmTestPayload): Promise<LlmTestResult> {
+  return request<LlmTestResult>("/api/llm-test", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export interface ClusterInfo {
   connected: boolean;
   context: string | null;

@@ -32,7 +32,7 @@ function params(
   return { params: Promise.resolve({ group, version, plural, namespace, name }) };
 }
 
-function request(path: string, init?: RequestInit) {
+function request(path: string, init?: ConstructorParameters<typeof NextRequest>[1]) {
   return new NextRequest(`http://localhost${path}`, {
     headers: { "x-kube-context": "test-ctx" },
     ...init,

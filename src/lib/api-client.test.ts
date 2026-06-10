@@ -20,11 +20,12 @@ const gatewayclasses = getResource("gatewayclasses")!;
 const namespaces = getResource("namespaces")!;
 
 function stubFetch(body: unknown, status = 200) {
-  const spy = vi.fn(async () =>
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "content-type": "application/json" },
-    }),
+  const spy = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(JSON.stringify(body), {
+        status,
+        headers: { "content-type": "application/json" },
+      }),
   );
   vi.stubGlobal("fetch", spy);
   return spy;
