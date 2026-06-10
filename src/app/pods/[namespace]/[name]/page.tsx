@@ -34,7 +34,7 @@ import { ApiError } from "@/lib/api-client";
 import { formatAge } from "@/lib/format";
 import { useInfra } from "@/lib/hooks";
 import { getHistory } from "@/lib/metrics-history";
-import { usePodDetail, usePodLogs } from "@/lib/pods-client";
+import { useLogStream, usePodDetail, usePodLogs } from "@/lib/pods-client";
 import { formatCpu, formatMemory } from "@/lib/quantity";
 import type { HealthState } from "@/lib/types";
 
@@ -62,12 +62,20 @@ export default function PodDetailPage({
 
   const [container, setContainer] = useState<string>("");
   const [tailLines, setTailLines] = useState(500);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [following, setFollowing] = useState(true);
+  // Following uses a live chunked stream; otherwise a one-shot tail fetch.
+  const stream = useLogStream(namespace, name, {
+    container: container || undefined,
+    tailLines,
+    enabled: following,
+  });
   const logs = usePodLogs(namespace, name, {
     container: container || undefined,
     tailLines,
-    autoRefresh,
+    autoRefresh: false,
+    enabled: !following,
   });
+  const logText = following ? stream.text : (logs.data?.logs ?? "");
 
   // Stick to the bottom on new logs unless the user scrolled up.
   const logRef = useRef<HTMLPreElement>(null);
@@ -76,13 +84,13 @@ export default function PodDetailPage({
     if (!el) return;
     const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
     if (nearBottom) el.scrollTop = el.scrollHeight;
-  }, [logs.data]);
+  }, [logText]);
 
   const apiError = error instanceof ApiError ? error.parsed : null;
   const metricsAvailable = infra.data?.metricsAvailable ?? false;
 
   function downloadLogs() {
-    const blob = new Blob([logs.data?.logs ?? ""], { type: "text/plain" });
+    const blob = new Blob([logText], { type: "text/plain" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `${namespace}_${name}${container ? `_${container}` : ""}.log`;
@@ -212,17 +220,30 @@ export default function PodDetailPage({
                 </Select>
                 <label className="flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Switch
-                    checked={autoRefresh}
-                    onCheckedChange={setAutoRefresh}
-                    aria-label="Auto refresh logs"
+                    checked={following}
+                    onCheckedChange={setFollowing}
+                    aria-label="Follow logs"
                   />
                   follow
                 </label>
+                {following && (
+                  <span className="flex items-center gap-1.5 text-[11px]">
+                    <span
+                      className={
+                        stream.status === "streaming"
+                          ? "status-dot status-dot-healthy animate-pulse"
+                          : "status-dot status-dot-pending animate-pulse"
+                      }
+                    />
+                    <span className="text-muted-foreground">{stream.status}</span>
+                  </span>
+                )}
                 <Button
                   variant="ghost"
                   size="icon"
                   className="size-7"
                   onClick={() => logs.refetch()}
+                  disabled={following}
                   aria-label="Refresh logs"
                 >
                   <RefreshCw className={`size-3.5 ${logs.isRefetching ? "animate-spin" : ""}`} />
@@ -232,7 +253,7 @@ export default function PodDetailPage({
                   size="icon"
                   className="size-7"
                   onClick={downloadLogs}
-                  disabled={!logs.data?.logs}
+                  disabled={!logText}
                   aria-label="Download logs"
                 >
                   <ArrowDownToLine className="size-3.5" />
@@ -240,19 +261,29 @@ export default function PodDetailPage({
               </div>
             </CardHeader>
             <CardContent>
-              {logs.isLoading ? (
+              {!following && logs.isLoading ? (
                 <p className="py-8 text-center text-xs text-muted-foreground">Loading logs…</p>
-              ) : logs.error ? (
+              ) : !following && logs.error ? (
                 <p className="py-4 text-xs text-destructive">
                   {logs.error instanceof ApiError ? logs.error.parsed.message : String(logs.error)}
                 </p>
               ) : (
-                <pre
-                  ref={logRef}
-                  className="max-h-[480px] overflow-auto rounded-lg border bg-[oklch(0.1_0.01_298)] p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-foreground/90"
-                >
-                  {logs.data?.logs || "No log output."}
-                </pre>
+                <>
+                  {following && stream.error && (
+                    <p className="mb-2 text-xs text-warning">
+                      stream interrupted ({stream.error}) — retrying…
+                    </p>
+                  )}
+                  <pre
+                    ref={logRef}
+                    className="max-h-[480px] overflow-auto rounded-lg border bg-[oklch(0.1_0.01_298)] p-3 font-mono text-[11px] leading-relaxed whitespace-pre-wrap text-foreground/90"
+                  >
+                    {logText ||
+                      (following && stream.status !== "streaming"
+                        ? "Connecting to log stream…"
+                        : "No log output.")}
+                  </pre>
+                </>
               )}
             </CardContent>
           </Card>

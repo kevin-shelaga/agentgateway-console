@@ -33,9 +33,11 @@ export function resolvedParams<T>(value: T): Promise<T> {
 export interface FetchRoute {
   /** Substring or RegExp matched against the request URL. */
   match: string | RegExp;
-  /** Response body (object → JSON). */
+  /** Response body (object → JSON; string + raw → text/plain as-is). */
   body: unknown;
   status?: number;
+  /** Serve the body verbatim (for streamed text endpoints). */
+  raw?: boolean;
 }
 
 /**
@@ -51,6 +53,12 @@ export function mockFetch(routes: FetchRoute[]) {
       const hit =
         typeof route.match === "string" ? url.includes(route.match) : route.match.test(url);
       if (hit) {
+        if (route.raw) {
+          return new Response(String(route.body), {
+            status: route.status ?? 200,
+            headers: { "content-type": "text/plain; charset=utf-8" },
+          });
+        }
         return new Response(JSON.stringify(route.body), {
           status: route.status ?? 200,
           headers: { "content-type": "application/json" },

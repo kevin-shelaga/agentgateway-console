@@ -41,6 +41,8 @@ function setup(logs = "2026-06-10T12:00:00Z starting gateway\n2026-06-10T12:00:0
     { match: "/api/infra", body: { metricsAvailable: true, pods: [infraPod] } },
     { match: "/api/pods/agentgateway-system/api-agentgateway-abc", body: podDetail },
     { match: "/logs?", body: { logs, container: "agentgateway" } },
+    // Follow is on by default: the live tail comes from the chunked stream.
+    { match: "/logs/stream?", body: logs, raw: true },
   ]);
 }
 
@@ -77,8 +79,8 @@ describe("PodDetailPage", () => {
     clearHistory();
     recordSamples([infraPod], 1000);
     recordSamples([{ ...infraPod, cpuMillis: 4, memoryBytes: 32 * 1024 * 1024 }], 16000);
-    // Trigger a re-render via the logs refresh button.
-    fireEvent.click(screen.getByRole("button", { name: "Refresh logs" }));
+    // Trigger a re-render (refresh is disabled while following).
+    fireEvent.click(screen.getByRole("switch", { name: "Follow logs" }));
     await waitFor(() => {
       expect(screen.getByRole("img", { name: "cpu usage trend" })).toBeInTheDocument();
       expect(screen.getByRole("img", { name: "mem usage trend" })).toBeInTheDocument();
@@ -87,12 +89,25 @@ describe("PodDetailPage", () => {
     expect(screen.getByText("32Mi")).toBeInTheDocument(); // current memory
   });
 
-  it("requests logs with the selected tail size", async () => {
+  it("tails via the stream endpoint with the selected tail size while following", async () => {
     const spy = setup();
     renderPage();
     await screen.findByText(/listening :80/);
-    const logCalls = spy.mock.calls.filter(([u]) => String(u).includes("/logs?"));
-    expect(String(logCalls[0][0])).toContain("tailLines=500");
+    const streamCalls = spy.mock.calls.filter(([u]) => String(u).includes("/logs/stream?"));
+    expect(streamCalls.length).toBeGreaterThan(0);
+    expect(String(streamCalls[0][0])).toContain("tailLines=500");
+    // The static endpoint is not used while following.
+    expect(spy.mock.calls.some(([u]) => /logs\?/.test(String(u)))).toBe(false);
+  });
+
+  it("falls back to the one-shot tail when follow is turned off", async () => {
+    const spy = setup();
+    renderPage();
+    await screen.findByText(/listening :80/);
+    fireEvent.click(screen.getByRole("switch", { name: "Follow logs" }));
+    await waitFor(() =>
+      expect(spy.mock.calls.some(([u]) => String(u).includes("/logs?"))).toBe(true),
+    );
   });
 
   it("surfaces 403s from the scope guard", async () => {
