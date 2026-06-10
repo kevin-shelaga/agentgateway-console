@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Standalone server output for the Docker image and the CLI launcher.
+  output: "standalone",
 };
 
 export default nextConfig;
