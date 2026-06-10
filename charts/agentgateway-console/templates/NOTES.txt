@@ -1,0 +1,14 @@
+agentgateway console deployed — hard-locked to this cluster.
+
+Reach it (no external exposure by default):
+
+  kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "agentgateway-console.fullname" . }} 3000:{{ .Values.service.port }}
+
+then open http://localhost:3000
+
+{{- if .Values.ingress.enabled }}
+
+WARNING: Ingress is enabled. The console has cluster write access and no
+built-in authentication — make sure an authenticating proxy or SSO sits in
+front of {{ (index .Values.ingress.hosts 0).host }}.
+{{- end }}

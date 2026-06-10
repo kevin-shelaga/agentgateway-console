@@ -1,0 +1,51 @@
+{{- if .Values.rbac.create }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "agentgateway-console.fullname" . }}
+  labels:
+    {{- include "agentgateway-console.labels" . | nindent 4 }}
+rules:
+  # Managed kinds: full clickops.
+  - apiGroups: ["gateway.networking.k8s.io"]
+    resources:
+      - gatewayclasses
+      - gateways
+      - httproutes
+      - grpcroutes
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  - apiGroups: ["agentgateway.dev"]
+    resources:
+      - agentgatewaybackends
+      - agentgatewaypolicies
+      - agentgatewayparameters
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  # Read-only reference data for pickers (the BFF strips secret payloads,
+  # but least-privilege still applies — list/get only, no watch).
+  - apiGroups: [""]
+    resources:
+      - namespaces
+      - services
+      - secrets
+    verbs: ["get", "list"]
+  # Live CRD schemas for validation.
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources:
+      - customresourcedefinitions
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "agentgateway-console.fullname" . }}
+  labels:
+    {{- include "agentgateway-console.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "agentgateway-console.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "agentgateway-console.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

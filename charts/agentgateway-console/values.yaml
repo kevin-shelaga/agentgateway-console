@@ -1,0 +1,63 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/agentgateway/agentgateway-console
+  tag: "" # defaults to chart appVersion
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  annotations: {}
+
+# RBAC granted to the console. The console can create/update/delete the
+# resources it manages; trim `writeKinds` for a read-only deployment.
+rbac:
+  create: true
+
+service:
+  # ClusterIP by default on purpose: the console has cluster write access and
+  # no built-in auth. Reach it with:
+  #   kubectl port-forward svc/<release>-agentgateway-console 3000:80
+  type: ClusterIP
+  port: 80
+
+# Optional Ingress — DISABLED by default. If you enable this, put an
+# authenticating proxy (oauth2-proxy, SSO ingress annotations, …) in front:
+# the console exposes unauthenticated write access to gateway configuration.
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: console.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+podAnnotations: {}
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
