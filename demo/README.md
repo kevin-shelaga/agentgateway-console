@@ -38,6 +38,16 @@ The mock LLM is a stdlib-only Python server shipped in a ConfigMap on
 with 404, so the request-rate, status-class, latency, and token charts all
 have shape.
 
+### MCP in the playground
+
+The demo also ships a mock **MCP server** (`Deployment default/mockmcp`,
+same stdlib-Python ConfigMap pattern) speaking MCP Streamable HTTP with
+four tools: `echo`, `add`, `get_weather`, and `roll_dice`. It's exposed
+through `AgentgatewayBackend default/mcp-tools` and
+`HTTPRoute default/mcp` (path `/mcp`), so the playground's **MCP tab** can
+pick the backend, list the tools, and call them through the real gateway.
+MCP traffic also feeds the Usage page's "MCP tool calls" card.
+
 ## Knobs
 
 ```sh

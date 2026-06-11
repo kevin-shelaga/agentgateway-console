@@ -37,7 +37,9 @@ demo-agentgateway:
 
 demo-app:
 	$(KUBECTL) apply -f demo/mockllm.yaml
+	$(KUBECTL) apply -f demo/mockmcp.yaml
 	$(KUBECTL) -n default rollout status deploy/mockllm --timeout=120s
+	$(KUBECTL) -n default rollout status deploy/mockmcp --timeout=120s
 	$(KUBECTL) apply -f demo/gateway.yaml
 	@echo "waiting for the demo-gateway proxy to be programmed..."
 	$(KUBECTL) wait --for=condition=Programmed gateway/demo-gateway -n default --timeout=120s

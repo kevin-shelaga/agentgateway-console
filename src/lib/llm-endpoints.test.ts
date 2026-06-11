@@ -54,6 +54,8 @@ describe("suggestMcpUrl", () => {
     expect(suggestMcpUrl({ ...endpoint, pathPrefix: "/agents/" })).toBe(
       "http://4.229.185.215/agents/mcp",
     );
+    // Routes that already match on /mcp don't get a doubled suffix.
+    expect(suggestMcpUrl({ ...endpoint, pathPrefix: "/mcp" })).toBe("http://4.229.185.215/mcp");
   });
 });
 
