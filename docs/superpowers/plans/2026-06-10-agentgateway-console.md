@@ -10,7 +10,7 @@
 
 **Deviation from spec:** YAML editor uses CodeMirror 6 instead of Monaco. monaco-yaml requires custom web-worker bundling that fights Next.js/Turbopack; CodeMirror bundles cleanly and our AJV layer supplies the same schema diagnostics. Spec updated.
 
-**Verification constraint:** The available kubeconfig context (`REDACTED-CLUSTER`) is a real cluster. All verification against it must be read-only (GET/list) or `dryRun=All`. No real writes without explicit user go-ahead.
+**Verification constraint:** The available kubeconfig context points at a real cluster. All verification against it must be read-only (GET/list) or `dryRun=All`. No real writes without explicit user go-ahead.
 
 ---
 
