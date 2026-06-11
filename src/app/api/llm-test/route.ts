@@ -18,6 +18,12 @@ export interface LlmTestRequest {
 
 const MAX_TIMEOUT_MS = 120_000;
 const MAX_RESPONSE_BYTES = 1_000_000;
+const ALLOWED_LLM_TEST_ORIGINS = new Set(
+  (process.env.LLM_TEST_ALLOWED_ORIGINS ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
+);
 
 /**
  * Server-side LLM test call: the browser can't reach gateway addresses
@@ -71,6 +77,9 @@ export async function POST(req: NextRequest) {
     }
     if (target.protocol !== "http:" && target.protocol !== "https:") {
       return forbidden("only http(s) and svc:// urls are supported");
+    }
+    if (!ALLOWED_LLM_TEST_ORIGINS.has(target.origin)) {
+      return forbidden(`target origin is not allowed: ${target.origin}`);
     }
     try {
       await assertAllowedTarget(target);
