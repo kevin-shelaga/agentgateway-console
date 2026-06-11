@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, ExternalLink, FlaskConical, KeyRound, LayoutDashboard } from "lucide-react";
+import { BookOpen, ExternalLink, FlaskConical, Gauge, KeyRound, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AgentgatewayLogo } from "@/components/agentgateway-logo";
@@ -119,6 +119,14 @@ export function AppSidebar() {
                   <Link href="/playground">
                     <FlaskConical />
                     <span>Playground</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname === "/usage"} tooltip="Usage">
+                  <Link href="/usage">
+                    <Gauge />
+                    <span>Usage</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
