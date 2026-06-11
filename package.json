@@ -1,6 +1,6 @@
 {
   "name": "agentgateway-console",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "private": false,
   "description": "Kubernetes console for agentgateway — dashboards and validated clickops for Gateway API and agentgateway.dev CRDs",
   "license": "Apache-2.0",
