@@ -66,6 +66,17 @@ function toCrd(required) {
     kind: "CustomResourceDefinition",
     metadata: {
       name: bundle.name,
+      // Protected API groups (*.k8s.io) reject CRDs without an approval
+      // annotation. These renders are e2e-only stand-ins for the real
+      // upstream manifests, so use the documented "unapproved" escape hatch.
+      ...(bundle.group.endsWith(".k8s.io")
+        ? {
+            annotations: {
+              "api-approved.kubernetes.io":
+                "unapproved, e2e-only render from bundled schemas (install the real Gateway API manifests in production)",
+            },
+          }
+        : {}),
     },
     spec: {
       group: bundle.group,
@@ -93,14 +104,20 @@ function renderYaml() {
 }
 
 function applyYaml(yaml) {
-  const result = spawnSync("kubectl", ["apply", "-f", "-"], {
-    input: yaml,
-    encoding: "utf8",
-    stdio: ["pipe", "inherit", "inherit"],
-  });
+  // Server-side apply: the agentgateway CRDs are ~900KB, far past the 256KB
+  // last-applied-configuration annotation limit of client-side apply.
+  const result = spawnSync(
+    "kubectl",
+    ["apply", "--server-side", "--field-manager", "agc-e2e", "--force-conflicts", "-f", "-"],
+    {
+      input: yaml,
+      encoding: "utf8",
+      stdio: ["pipe", "inherit", "inherit"],
+    },
+  );
 
   if (result.error) {
-    throw new Error(`Failed to run kubectl apply -f -: ${result.error.message}`);
+    throw new Error(`Failed to run kubectl apply: ${result.error.message}`);
   }
 
   process.exit(result.status ?? 1);
