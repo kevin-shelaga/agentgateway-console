@@ -1,5 +1,21 @@
 # Demo gateway + routes + AI backends, mirroring the upstream e2e patterns:
 # AI backends use a provider host/port override pointing at the mock LLM.
+#
+# Adds a custom `user` metric label (CEL over the x-user-id header) to every
+# proxy metric family — this powers the console's "Tokens by user" card.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: demo-gateway-params
+  namespace: default
+spec:
+  rawConfig:
+    config:
+      metrics:
+        fields:
+          add:
+            user: 'request.headers["x-user-id"]'
+---
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
@@ -7,6 +23,11 @@ metadata:
   namespace: default
 spec:
   gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef:
+      group: agentgateway.dev
+      kind: AgentgatewayParameters
+      name: demo-gateway-params
   listeners:
     - name: http
       protocol: HTTP
