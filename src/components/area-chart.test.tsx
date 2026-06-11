@@ -2,23 +2,27 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { AreaChart } from "@/components/area-chart";
 import { formatCpu, formatMemory } from "@/lib/quantity";
-import type { MetricSample } from "@/lib/metrics-history";
 
-const samples: MetricSample[] = [
-  { t: 1_000_000, cpu: 2, mem: 16 * 1024 * 1024 },
-  { t: 1_015_000, cpu: 4, mem: 24 * 1024 * 1024 },
-  { t: 1_030_000, cpu: 3, mem: 20 * 1024 * 1024 },
+const cpuPoints = [
+  { t: 1_000_000, v: 2 },
+  { t: 1_015_000, v: 4 },
+  { t: 1_030_000, v: 3 },
+];
+const memPoints = [
+  { t: 1_000_000, v: 16 * 1024 * 1024 },
+  { t: 1_015_000, v: 24 * 1024 * 1024 },
+  { t: 1_030_000, v: 20 * 1024 * 1024 },
 ];
 
 describe("AreaChart", () => {
   it("shows a collecting placeholder until two samples exist", () => {
-    render(<AreaChart samples={samples.slice(0, 1)} metric="cpu" format={formatCpu} />);
+    render(<AreaChart points={cpuPoints.slice(0, 1)} label="cpu" format={formatCpu} />);
     expect(screen.getByText(/Collecting samples/)).toBeInTheDocument();
   });
 
   it("renders labeled value-axis ticks, current/min/max, and the trend", () => {
     const { container } = render(
-      <AreaChart samples={samples} metric="cpu" format={formatCpu} />,
+      <AreaChart points={cpuPoints} label="cpu" format={formatCpu} />,
     );
     expect(screen.getByRole("img", { name: "cpu usage trend" })).toBeInTheDocument();
     // Current value headline + min/max summary ("3m" may also be a tick label).
@@ -33,8 +37,8 @@ describe("AreaChart", () => {
   it("draws dashed reference lines scaled into the axis", () => {
     const { container } = render(
       <AreaChart
-        samples={samples}
-        metric="mem"
+        points={memPoints}
+        label="mem"
         format={formatMemory}
         referenceLines={[
           { value: 128 * 1024 * 1024, label: "request" },

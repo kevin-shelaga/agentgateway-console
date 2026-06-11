@@ -173,8 +173,8 @@ export default function PodDetailPage({
               <CardContent>
                 {metricsAvailable ? (
                   <AreaChart
-                    samples={history}
-                    metric="cpu"
+                    points={history.map((s) => ({ t: s.t, v: s.cpu }))}
+                    label="cpu"
                     format={formatCpu}
                     referenceLines={cpuRefs}
                     className="text-chart-1"
@@ -194,8 +194,8 @@ export default function PodDetailPage({
               <CardContent>
                 {metricsAvailable ? (
                   <AreaChart
-                    samples={history}
-                    metric="mem"
+                    points={history.map((s) => ({ t: s.t, v: s.mem }))}
+                    label="mem"
                     format={formatMemory}
                     referenceLines={memRefs}
                     className="text-chart-3"

@@ -1,7 +1,11 @@
 "use client";
 
 import { useId } from "react";
-import type { MetricSample } from "@/lib/metrics-history";
+
+export interface ChartPoint {
+  t: number;
+  v: number;
+}
 
 export interface ReferenceLine {
   value: number;
@@ -14,22 +18,24 @@ export interface ReferenceLine {
  * limits). The scale grows to fit both the data and the reference lines.
  */
 export function AreaChart({
-  samples,
-  metric,
+  points,
+  label,
   format,
   referenceLines = [],
   className,
   height = 160,
 }: {
-  samples: MetricSample[];
-  metric: "cpu" | "mem";
+  points: ChartPoint[];
+  /** Accessible name suffix, e.g. "cpu" → "cpu usage trend". */
+  label: string;
   format: (value: number) => string;
   referenceLines?: ReferenceLine[];
   className?: string;
   height?: number;
 }) {
   const gradientId = useId();
-  const values = samples.map((s) => s[metric]);
+  const samples = points;
+  const values = samples.map((s) => s.v);
 
   if (values.length < 2) {
     return (
@@ -75,7 +81,7 @@ export function AreaChart({
         className="w-full"
         style={{ height }}
         role="img"
-        aria-label={`${metric} usage trend`}
+        aria-label={`${label} usage trend`}
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">

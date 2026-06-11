@@ -48,11 +48,13 @@ rules:
     resources:
       - customresourcedefinitions
     verbs: ["get"]
-  # Runtime panel + pod detail: inventory, usage, and logs.
+  # Runtime panel + pod detail + usage page: inventory, usage, logs, and
+  # metrics scraping through the API-server pod proxy.
   - apiGroups: [""]
     resources:
       - pods
       - pods/log
+      - pods/proxy
     verbs: ["get", "list"]
   - apiGroups: ["metrics.k8s.io"]
     resources:
