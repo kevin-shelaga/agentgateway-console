@@ -1,7 +1,7 @@
 <div align="center">
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="public/banner-dark.svg">
+  <!-- <source media="(prefers-color-scheme: dark)" srcset="public/banner-dark.svg"> -->
   <source media="(prefers-color-scheme: light)" srcset="public/banner-light.svg">
   <img src="public/banner-light.svg" alt="agentgateway" width="520">
 </picture>
@@ -23,6 +23,13 @@
 
 </div>
 
+---
+
+![alt text](./images/dashboard.png)
+
+![alt text](./images/rw.png)
+
+![alt text](./images/cost.png)
 ---
 
 ## Why this exists
