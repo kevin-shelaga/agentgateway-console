@@ -19,11 +19,18 @@ test.beforeAll(() => {
     throw new Error(`kind e2e requires a kind kube context, got ${context}`);
   }
 
-  const kindNodes = execFileSync("kubectl", ["get", "nodes", "-l", "kind.x-k8s.io/node", "-o", "name"], {
+  // kind puts no kind-specific label on node objects; its nodes are named
+  // <cluster>-control-plane / <cluster>-worker, with the cluster name taken
+  // from the kind-<cluster> context validated above.
+  const clusterName = context.replace(/^kind-/, "");
+  const nodes = execFileSync("kubectl", ["get", "nodes", "-o", "name"], {
     encoding: "utf8",
   }).trim();
-  if (!kindNodes) {
-    throw new Error(`kind e2e requires kind-labeled nodes in context ${context}`);
+  const kindNodes = nodes.split("\n").filter((node) => node.includes(clusterName));
+  if (kindNodes.length === 0) {
+    throw new Error(
+      `kind e2e requires nodes for cluster ${clusterName} in context ${context}; found: ${nodes || "none"}`,
+    );
   }
 
   execFileSync("node", ["scripts/ci/render-crds.mjs", "--apply"], { stdio: "inherit" });
