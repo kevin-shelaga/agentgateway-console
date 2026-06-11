@@ -518,8 +518,8 @@ export const ENTERPRISE_RESOURCES: ResourceDescriptor[] = [
     plural: "enterpriselistenersets",
     scope: "Namespaced",
     crdName: "enterpriselistenersets.enterprise.solo.io",
-    label: "Listener Set",
-    labelPlural: "Listener Sets",
+    label: "Enterprise Listener Set",
+    labelPlural: "Enterprise Listener Sets",
     description: "Enterprise listener sets attached to gateways",
     icon: "layers",
     listColumns: [

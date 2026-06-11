@@ -37,5 +37,8 @@ jobs:
       - name: Run smoke e2e
         run: npm run test:e2e
 
+      - name: Verify npm package CLI
+        run: npm run test:package
+
       - name: Build Docker image
         run: docker build -t agentgateway-console:ci .

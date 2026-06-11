@@ -94,6 +94,9 @@ jobs:
       - name: Verify package contents
         run: npm pack --dry-run --ignore-scripts
 
+      - name: Verify published CLI package
+        run: npm run test:package
+
       - name: Check published package
         id: npm_view
         shell: bash
