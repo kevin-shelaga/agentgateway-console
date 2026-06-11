@@ -40,8 +40,8 @@ describe("AppSidebar", () => {
   it("renders the dashboard link and both nav groups", () => {
     renderSidebar();
     expect(screen.getByRole("link", { name: /Dashboard/ })).toHaveAttribute("href", "/");
-    expect(screen.getByText("Gateway API")).toBeInTheDocument();
-    expect(screen.getByText("Agentgateway")).toBeInTheDocument();
+    expect(screen.getAllByText("Gateway API").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Agentgateway").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders one nav entry per registry resource with the right href", () => {
@@ -70,5 +70,22 @@ describe("AppSidebar", () => {
     expect(
       screen.getByRole("link", { name: /Dashboard/ }).closest('[data-active="true"]'),
     ).toBeNull();
+  });
+});
+
+describe("Docs section", () => {
+  it("links out to agentgateway, enterprise, and Gateway API docs in new tabs", () => {
+    renderSidebar();
+    const expectations: Array<[string, string]> = [
+      ["Agentgateway", "https://agentgateway.dev/docs/"],
+      ["Enterprise Agentgateway", "https://docs.solo.io/agentgateway/"],
+      ["Gateway API", "https://gateway-api.sigs.k8s.io/"],
+    ];
+    for (const [name, href] of expectations) {
+      const link = screen.getByRole("link", { name: new RegExp(`^${name}$`) });
+      expect(link).toHaveAttribute("href", href);
+      expect(link).toHaveAttribute("target", "_blank");
+      expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    }
   });
 });

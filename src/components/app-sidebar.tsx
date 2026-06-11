@@ -1,6 +1,6 @@
 "use client";
 
-import { FlaskConical, KeyRound, LayoutDashboard } from "lucide-react";
+import { BookOpen, ExternalLink, FlaskConical, KeyRound, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AgentgatewayLogo } from "@/components/agentgateway-logo";
@@ -34,6 +34,12 @@ const GATEWAY_API_IDS = [
 ];
 const AGENTGATEWAY_IDS = ["backends", "policies", "parameters"];
 const ENTERPRISE_IDS = ["ent-backends", "ent-policies", "ent-parameters", "ent-listenersets"];
+
+const DOC_LINKS = [
+  { label: "Agentgateway", href: "https://agentgateway.dev/docs/" },
+  { label: "Enterprise Agentgateway", href: "https://docs.solo.io/agentgateway/" },
+  { label: "Gateway API", href: "https://gateway-api.sigs.k8s.io/" },
+];
 
 function NavGroup({
   label,
@@ -135,6 +141,26 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </NavGroup>
         <NavGroup label="Enterprise" ids={ENTERPRISE_IDS} />
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-[10px] tracking-[0.18em] uppercase">
+            Docs
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {DOC_LINKS.map(({ label, href }) => (
+                <SidebarMenuItem key={href}>
+                  <SidebarMenuButton asChild tooltip={`${label} docs`}>
+                    <a href={href} target="_blank" rel="noopener noreferrer">
+                      <BookOpen />
+                      <span>{label}</span>
+                      <ExternalLink className="ml-auto size-3 text-muted-foreground" />
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
         <div className="flex items-center gap-1.5 group-data-[collapsible=icon]:flex-col">
