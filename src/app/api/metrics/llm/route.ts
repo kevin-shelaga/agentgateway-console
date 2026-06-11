@@ -7,9 +7,12 @@ const GATEWAY_NAME_LABEL = "gateway.networking.k8s.io/gateway-name";
 const METRICS_PORT = 15020;
 /** Metric families the usage page consumes; everything else is dropped. */
 const WANTED_PREFIXES = [
-  "agentgateway_gen_ai_client_token_usage",
+  // token usage + server_request_duration / time_to_first_token / time_per_output_token
+  "agentgateway_gen_ai",
   "agentgateway_requests",
   "agentgateway_request_duration",
+  "agentgateway_mcp_requests",
+  "agentgateway_guardrail_checks",
 ];
 
 export interface LlmMetricsResponse {

@@ -18,7 +18,10 @@ make demo-down      # tear it all down
 ```
 
 Traffic takes ~30 seconds to show up on the Usage page (metrics are scraped
-from the proxy pods every 15s and charted as session-scope rates).
+from the proxy pods every 15s and charted as session-scope rates). The
+traffic generator rotates `x-user-id` between `alice`, `bob`, and `carol`,
+which the demo gateway turns into a `user` metric label — so the Usage
+page's "Tokens by user" card lights up too.
 
 ## What gets deployed
 
@@ -30,6 +33,7 @@ from the proxy pods every 15s and charted as session-scope rates).
 | `AgentgatewayBackend gpt4o-mini` / `gpt41` | Two AI backends → by-model token charts |
 | `Secret default/demo-llm-key` | Shows up on the API Keys page (referenced by both backends) |
 | `Deployment default/mockllm` | OpenAI-compatible mock returning randomized `usage` token counts |
+| `AgentgatewayParameters demo-gateway-params` | Adds a `user` metric label from the `x-user-id` header → "Tokens by user" card |
 
 The mock LLM is a stdlib-only Python server shipped in a ConfigMap on
 `python:3.12-alpine` — no images to build. It answers
