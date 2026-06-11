@@ -15,8 +15,11 @@
 [![React](https://img.shields.io/badge/React-19-61dafb?logo=react&logoColor=black)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-Gateway%20API-326ce5?logo=kubernetes&logoColor=white)](https://gateway-api.sigs.k8s.io)
+[![CI](https://github.com/kevin-shelaga/agentgateway-console/actions/workflows/ci.yml/badge.svg)](https://github.com/kevin-shelaga/agentgateway-console/actions/workflows/ci.yml)
+[![Kind E2E](https://github.com/kevin-shelaga/agentgateway-console/actions/workflows/kind-e2e.yml/badge.svg)](https://github.com/kevin-shelaga/agentgateway-console/actions/workflows/kind-e2e.yml)
+[![Container](https://github.com/kevin-shelaga/agentgateway-console/actions/workflows/container.yml/badge.svg)](https://github.com/kevin-shelaga/agentgateway-console/actions/workflows/container.yml)
 
-[Features](#-features) · [Compatibility](#-version-compatibility) · [Quickstart](#-quickstart) · [Deployment](#-deployment) · [Architecture](#-architecture) · [Development](#-development)
+[Features](#-features) · [Compatibility](#-version-compatibility) · [Quickstart](#-quickstart) · [Deployment](#-deployment) · [Architecture](#-architecture) · [Development](#-development) · [Releasing](#-releasing)
 
 </div>
 
@@ -125,6 +128,12 @@ The Service is `ClusterIP` by default — no external exposure. An Ingress templ
 ### Docker
 
 The multi-stage [`Dockerfile`](Dockerfile) builds a minimal standalone server running as a non-root user:
+
+Published images are available from GitHub Container Registry:
+
+```bash
+docker run -p 3000:3000 -v ~/.kube:/home/agc/.kube:ro ghcr.io/kevin-shelaga/agentgateway-console:latest
+```
 
 ```bash
 docker build -t agentgateway-console .
@@ -265,6 +274,22 @@ node scripts/extract-schemas.mjs   # refresh bundled CRD schema fallbacks
 Built with [Next.js 16](https://nextjs.org) (App Router) · [React 19](https://react.dev) · [Tailwind CSS 4](https://tailwindcss.com) · [shadcn/ui](https://ui.shadcn.com) · [CodeMirror 6](https://codemirror.net) · [TanStack Query](https://tanstack.com/query) · [AJV](https://ajv.js.org) · [@kubernetes/client-node](https://github.com/kubernetes-client/javascript).
 
 Design docs live in [`docs/superpowers/`](docs/superpowers) — the [design spec](docs/superpowers/specs/2026-06-10-agentgateway-console-design.md) is the best place to start for scope and rationale.
+
+## 🚢 Releasing
+
+Releases publish two artifacts:
+
+- `ghcr.io/kevin-shelaga/agentgateway-console` for container deployments.
+- `agentgateway-console` on npm for `npx agentgateway-console`.
+
+Release flow:
+
+```bash
+npm version patch
+git push origin main --tags
+```
+
+Publishing is handled by GitHub Actions. Strict semver tags (`vX.Y.Z`) from `main` publish the npm package and tag the container image as `vX.Y.Z` and `latest`. Manual release validation is available from the workflow, but does not publish without a trusted tag or release context. npm publishing requires the repository `NPM_TOKEN` secret.
 
 ## 📄 License
 
