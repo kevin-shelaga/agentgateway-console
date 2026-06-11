@@ -21,6 +21,10 @@ const METRICS_A = `# TYPE agentgateway_requests counter
 agentgateway_requests_total{gateway="agw/gw",status="200"} 100
 agentgateway_gen_ai_client_token_usage_sum{gen_ai_token_type="input",gen_ai_request_model="gpt-4o-mini"} 5000
 agentgateway_gen_ai_client_token_usage_bucket{gen_ai_token_type="input",le="+Inf"} 10
+agentgateway_gen_ai_server_time_to_first_token_sum{gen_ai_system="openai"} 12.5
+agentgateway_gen_ai_server_time_per_output_token_count{gen_ai_system="openai"} 400
+agentgateway_mcp_requests_total{method="tools/call",server="github",resource="search_issues"} 7
+agentgateway_guardrail_checks_total{phase="Request",action="Reject"} 3
 agentgateway_cgroup_usage 999
 `;
 const METRICS_B = `agentgateway_requests_total{gateway="agw/gw",status="200"} 40
@@ -58,6 +62,13 @@ describe("GET /api/metrics/llm", () => {
     expect(requests.value).toBe(140); // 100 + 40 across replicas
     const tokens = body.samples.find((s: { name: string }) => s.name.endsWith("_usage_sum"));
     expect(tokens.value).toBe(6000);
+    // LLM latency histograms, MCP calls, and guardrail counters pass through.
+    const names = body.samples.map((s: { name: string }) => s.name);
+    expect(names).toContain("agentgateway_gen_ai_server_time_to_first_token_sum");
+    expect(names).toContain("agentgateway_gen_ai_server_time_per_output_token_count");
+    const mcp = body.samples.find((s: { name: string }) => s.name === "agentgateway_mcp_requests_total");
+    expect(mcp.labels.resource).toBe("search_issues");
+    expect(names).toContain("agentgateway_guardrail_checks_total");
     // Buckets and unwanted families are dropped.
     expect(body.samples.some((s: { name: string }) => s.name.endsWith("_bucket"))).toBe(false);
     expect(body.samples.some((s: { name: string }) => s.name.includes("cgroup"))).toBe(false);

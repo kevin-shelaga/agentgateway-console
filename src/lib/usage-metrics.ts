@@ -22,6 +22,8 @@ interface SeriesState {
   lastValue: number;
   lastAt: number;
   perSecond: number;
+  /** Reset-aware increase accumulated since this console session started. */
+  sessionDelta: number;
   points: RatePoint[];
 }
 
@@ -48,6 +50,7 @@ export function recordScrape(samples: PromSample[], at: number): void {
         lastValue: sample.value,
         lastAt: at,
         perSecond: 0,
+        sessionDelta: 0,
         points: [],
       });
       continue;
@@ -60,6 +63,7 @@ export function recordScrape(samples: PromSample[], at: number): void {
     prev.lastValue = sample.value;
     prev.lastAt = at;
     prev.perSecond = perSecond;
+    prev.sessionDelta += delta;
     prev.points = [...prev.points, { t: at, v: perSecond }].slice(-MAX_POINTS);
   }
 }
@@ -100,6 +104,62 @@ export function groupBy(
   return [...sums.entries()]
     .map(([key, perSecond]) => ({ key, perSecond }))
     .sort((a, b) => b.perSecond - a.perSecond || a.key.localeCompare(b.key));
+}
+
+export interface SeriesTotal {
+  labels: Record<string, string>;
+  /** Latest counter value — cumulative since the proxy pods started. */
+  value: number;
+  /** Reset-aware increase observed while this console session was open. */
+  sessionDelta: number;
+}
+
+/** Cumulative totals for every series of a metric. */
+export function totals(name: string): SeriesTotal[] {
+  const out: SeriesTotal[] = [];
+  for (const state of store.values()) {
+    if (state.name === name)
+      out.push({ labels: state.labels, value: state.lastValue, sessionDelta: state.sessionDelta });
+  }
+  return out;
+}
+
+/** Sum lifetime and session totals, optionally over a label filter. */
+export function sumTotals(
+  list: SeriesTotal[],
+  filter?: (labels: Record<string, string>) => boolean,
+): { lifetime: number; session: number } {
+  let lifetime = 0;
+  let session = 0;
+  for (const entry of list) {
+    if (filter && !filter(entry.labels)) continue;
+    lifetime += entry.value;
+    session += entry.sessionDelta;
+  }
+  return { lifetime, session };
+}
+
+/** Sum session totals per value of one label, descending. */
+export function sessionTotalsBy(
+  list: SeriesTotal[],
+  label: string,
+): Array<{ key: string; total: number }> {
+  const sums = new Map<string, number>();
+  for (const entry of list) {
+    const key = entry.labels[label] ?? "unknown";
+    sums.set(key, (sums.get(key) ?? 0) + entry.sessionDelta);
+  }
+  return [...sums.entries()]
+    .map(([key, total]) => ({ key, total }))
+    .sort((a, b) => b.total - a.total || a.key.localeCompare(b.key));
+}
+
+/** Last `windowMs` of points, anchored to the newest sample (not wall clock). */
+export function sliceWindow(points: RatePoint[], windowMs: number): RatePoint[] {
+  const last = points.at(-1);
+  if (!last) return points;
+  const cutoff = last.t - windowMs;
+  return points.filter((p) => p.t >= cutoff);
 }
 
 export function clearUsageHistory(): void {

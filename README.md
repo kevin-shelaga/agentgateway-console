@@ -87,10 +87,46 @@ The console is deliberately **version-tolerant**: validation schemas are read li
 - 🧪 **Playground** — send a real chat completion (LLM tab) or connect, list tools, and call them over MCP Streamable HTTP (MCP tab) **through the actual gateway**, with endpoints auto-discovered from the backend → route → gateway → address graph.
 - 🔑 **API key management** — LLM credentials as `Opaque` Secrets with an `Authorization` entry (the format `spec.policies.auth.secretRef` consumes): create with a crypto-random `sk_…` generator, rotate, delete, see which backends reference each key. Values are write-only — never displayed, returned, or logged after creation.
 - 📈 **Pod detail pages** — click any runtime pod for CPU/memory area charts with labeled scales and request/limit reference lines, plus **live log tailing** over a chunked follow stream (container picker, tail size, auto-reconnect, download).
+- 📉 **Usage page** — LLM token consumption scraped live from every proxy replica and summed (no Prometheus required): total/session token cards, input/output trends with a 5m/15m/30m timeframe, time-to-first-token and generation-speed stats, breakdowns by model/provider/route/gateway/status, **per-user attribution** (see [Per-user metrics](#per-user-metrics)), MCP tool-call rates per tool/server, and guardrail check counts.
 - 🏢 **Enterprise support** — the `solo.io` kinds managed side by side with OSS (see [Enterprise install](#enterprise-install)).
 - 🔄 **Kubeconfig context switcher** — operate any cluster your kubeconfig can reach from the widget at the bottom of the sidebar; in-cluster deployments are hard-locked to their own cluster for isolation.
 - 🧭 **Served-version negotiation** — clusters skew Gateway API versions (e.g. `TLSRoute v1alpha3`, `ReferenceGrant v1beta1`); the BFF reads each CRD's served versions and aligns reads, writes, and schemas automatically.
 - 🌙 **Dark-mode-first UI** — agentgateway brand identity on shadcn/ui primitives, with a light theme one toggle away.
+
+### Per-user metrics
+
+agentgateway can stamp every metric family with **custom labels computed from CEL expressions** — the console's "Tokens by user" card activates automatically when a `user` label appears on token metrics. Add the label via `AgentgatewayParameters` and reference it from your Gateway:
+
+```yaml
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayParameters
+metadata:
+  name: my-gateway-params
+spec:
+  rawConfig:
+    config:
+      metrics:
+        fields:
+          add:
+            user: 'jwt.sub'   # or: request.headers["x-user-id"], apiKey claims, …
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: my-gateway
+spec:
+  gatewayClassName: agentgateway
+  infrastructure:
+    parametersRef:
+      group: agentgateway.dev
+      kind: AgentgatewayParameters
+      name: my-gateway-params
+```
+
+The CEL context includes `jwt` (verified claims), `apiKey`, `basicAuth`, `request` (headers), and `source`. Label whatever identifies a consumer in your setup.
+
+> [!WARNING]
+> Every distinct label value creates a full set of time series in proxy memory. Bounded identities (team IDs, service accounts, a few hundred users) are fine; unbounded high-cardinality values (session IDs, request IDs) will bloat the proxy's metric registry.
 
 ### How validation works
 
