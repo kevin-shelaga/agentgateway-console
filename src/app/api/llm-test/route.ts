@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Agent } from "undici";
 import { contextFrom, forbidden } from "@/lib/k8s/registry-server";
 import { parseSvcUrl, serviceProxyTarget } from "@/lib/k8s/service-proxy";
+import { assertAllowedTarget } from "@/lib/k8s/target-guard";
 
 export interface LlmTestRequest {
   url: string;
@@ -71,6 +72,11 @@ export async function POST(req: NextRequest) {
     if (target.protocol !== "http:" && target.protocol !== "https:") {
       return forbidden("only http(s) and svc:// urls are supported");
     }
+    try {
+      await assertAllowedTarget(target);
+    } catch (err) {
+      return forbidden(err instanceof Error ? err.message : String(err));
+    }
   }
 
   const started = performance.now();
@@ -80,6 +86,9 @@ export async function POST(req: NextRequest) {
       headers,
       body: JSON.stringify(test.body ?? {}),
       signal: AbortSignal.timeout(timeoutMs),
+      // No redirect-following: a 3xx must not bounce the request past the
+      // target guard. The 3xx itself is surfaced as the response.
+      redirect: "manual",
       // undici extension; absent from the DOM fetch types
       ...(dispatcher ? ({ dispatcher } as object) : {}),
     });

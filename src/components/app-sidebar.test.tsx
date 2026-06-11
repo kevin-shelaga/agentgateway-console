@@ -82,7 +82,7 @@ describe("Docs section", () => {
       ["Gateway API", "https://gateway-api.sigs.k8s.io/"],
     ];
     for (const [name, href] of expectations) {
-      const link = screen.getByRole("link", { name: new RegExp(`^${name}$`) });
+      const link = screen.getByRole("link", { name });
       expect(link).toHaveAttribute("href", href);
       expect(link).toHaveAttribute("target", "_blank");
       expect(link).toHaveAttribute("rel", "noopener noreferrer");

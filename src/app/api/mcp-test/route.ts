@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Agent } from "undici";
 import { contextFrom, forbidden } from "@/lib/k8s/registry-server";
 import { parseSvcUrl, serviceProxyTarget } from "@/lib/k8s/service-proxy";
+import { assertAllowedTarget } from "@/lib/k8s/target-guard";
 
 export interface McpTestRequest {
   url: string;
@@ -82,16 +83,30 @@ export async function POST(req: NextRequest) {
     if (target.protocol !== "http:" && target.protocol !== "https:") {
       return forbidden("only http(s) and svc:// urls are supported");
     }
+    try {
+      await assertAllowedTarget(target);
+    } catch (err) {
+      return forbidden(err instanceof Error ? err.message : String(err));
+    }
   }
 
-  const insecureFetch = dispatcher
-    ? (url: string | URL, init?: RequestInit) =>
-        fetch(url, { ...init, ...({ dispatcher } as object) })
-    : undefined;
+  // Guard every transport request (the SDK may follow its own URLs), and
+  // never follow redirects past the target guard.
+  const guardedFetch = async (url: string | URL, init?: RequestInit) => {
+    const requested = new URL(url);
+    if (requested.protocol === "http:" || requested.protocol === "https:") {
+      if (!svc) await assertAllowedTarget(requested);
+    }
+    return fetch(url, {
+      ...init,
+      redirect: "manual",
+      ...(dispatcher ? ({ dispatcher } as object) : {}),
+    });
+  };
 
   const transport = new StreamableHTTPClientTransport(target, {
     requestInit: { headers },
-    fetch: insecureFetch,
+    fetch: guardedFetch,
   });
   const client = new Client({ name: "agentgateway-console", version: "0.1.0" });
 
