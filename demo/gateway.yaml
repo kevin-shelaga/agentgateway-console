@@ -1,0 +1,101 @@
+# Demo gateway + routes + AI backends, mirroring the upstream e2e patterns:
+# AI backends use a provider host/port override pointing at the mock LLM.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: demo-gateway
+  namespace: default
+spec:
+  gatewayClassName: agentgateway
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Same
+---
+# The key the AI backends present to the "provider" — also demos the
+# console's API Keys page (it appears there, referenced by both backends).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: demo-llm-key
+  namespace: default
+type: Opaque
+stringData:
+  Authorization: sk_demo_not_a_real_key
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: gpt4o-mini
+  namespace: default
+spec:
+  ai:
+    provider:
+      openai:
+        model: gpt-4o-mini
+      host: mockllm.default.svc.cluster.local
+      port: 9234
+  policies:
+    auth:
+      secretRef:
+        name: demo-llm-key
+---
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: gpt41
+  namespace: default
+spec:
+  ai:
+    provider:
+      openai:
+        model: gpt-4.1
+      host: mockllm.default.svc.cluster.local
+      port: 9234
+  policies:
+    auth:
+      secretRef:
+        name: demo-llm-key
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: llm
+  namespace: default
+spec:
+  parentRefs:
+    - name: demo-gateway
+  rules:
+    - name: gpt4o-mini
+      matches:
+        - path: { type: PathPrefix, value: /v1 }
+      backendRefs:
+        - group: agentgateway.dev
+          kind: AgentgatewayBackend
+          name: gpt4o-mini
+    - name: gpt41
+      matches:
+        - path: { type: PathPrefix, value: /v2 }
+      backendRefs:
+        - group: agentgateway.dev
+          kind: AgentgatewayBackend
+          name: gpt41
+---
+# Plain Service-backed route: non-LLM traffic for the dashboards.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: echo
+  namespace: default
+spec:
+  parentRefs:
+    - name: demo-gateway
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /echo }
+      backendRefs:
+        - name: mockllm
+          port: 9234
