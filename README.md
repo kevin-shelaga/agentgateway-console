@@ -24,6 +24,8 @@
 </div>
 
 ---
+![alt text](image.png)
+---
 
 ## Why this exists
 
