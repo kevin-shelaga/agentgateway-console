@@ -5,6 +5,7 @@ import { GatewayForm } from "./gateway-form";
 import { GatewayClassForm } from "./gatewayclass-form";
 import { GrpcRouteForm } from "./grpcroute-form";
 import { HttpRouteForm } from "./httproute-form";
+import { ListenerSetForm } from "./listenerset-form";
 import { ParametersForm } from "./parameters-form";
 import { PolicyForm } from "./policy-form";
 
@@ -18,6 +19,7 @@ export const FORMS: Record<string, ComponentType<ResourceFormProps>> = {
   gatewayclasses: GatewayClassForm,
   grpcroutes: GrpcRouteForm,
   httproutes: HttpRouteForm,
+  listenersets: ListenerSetForm,
   parameters: ParametersForm,
   policies: PolicyForm,
 };

@@ -58,6 +58,20 @@ export function getReferences(res: K8sResource): ResourceRef[] {
       }
       break;
     }
+    case "ListenerSet": {
+      const parent = spec.parentRef as Record<string, unknown> | undefined;
+      if (parent?.name) {
+        out.push(
+          ref(
+            (parent.kind as string) ?? "Gateway",
+            parent.name as string,
+            "parent",
+            (parent.namespace as string) ?? ns,
+          ),
+        );
+      }
+      break;
+    }
     case "GatewayClass": {
       const p = spec.parametersRef as Record<string, unknown> | undefined;
       if (p?.name) {

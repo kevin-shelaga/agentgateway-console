@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ALL_RESOURCES } from "@/lib/registry";
 
-const GATEWAY_API_IDS = ["gatewayclasses", "gateways", "httproutes", "grpcroutes"];
+const GATEWAY_API_IDS = ["gatewayclasses", "gateways", "listenersets", "httproutes", "grpcroutes"];
 const AGENTGATEWAY_IDS = ["backends", "policies", "parameters"];
 const ENTERPRISE_IDS = ["ent-backends", "ent-policies", "ent-parameters", "ent-listenersets"];
 

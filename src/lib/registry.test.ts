@@ -14,7 +14,7 @@ import { aiBackend, gateway, httpRoute, mcpBackend, policy, staticBackend } from
 import type { K8sResource } from "./types";
 
 describe("registry shape", () => {
-  it("manages the seven OSS kinds, four enterprise kinds, plus three read-only", () => {
+  it("manages the eight OSS kinds, four enterprise kinds, plus three read-only", () => {
     expect(RESOURCES.map((r) => r.kind).sort()).toEqual([
       "AgentgatewayBackend",
       "AgentgatewayParameters",
@@ -23,6 +23,7 @@ describe("registry shape", () => {
       "Gateway",
       "GatewayClass",
       "HTTPRoute",
+      "ListenerSet",
     ]);
     expect(ENTERPRISE_RESOURCES.map((r) => r.kind).sort()).toEqual([
       "EnterpriseAgentgatewayBackend",
@@ -31,7 +32,7 @@ describe("registry shape", () => {
       "EnterpriseListenerSet",
     ]);
     expect(READONLY_RESOURCES.every((r) => r.readOnly)).toBe(true);
-    expect(ALL_RESOURCES).toHaveLength(14);
+    expect(ALL_RESOURCES).toHaveLength(15);
   });
 
   it("every descriptor has a unique id and a valid template", () => {

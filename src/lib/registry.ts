@@ -265,6 +265,54 @@ export const RESOURCES: ResourceDescriptor[] = [
     docsUrl: "https://gateway-api.sigs.k8s.io/api-types/grpcroute/",
   },
   {
+    id: "listenersets",
+    kind: "ListenerSet",
+    group: GATEWAY_API_GROUP,
+    version: "v1",
+    plural: "listenersets",
+    scope: "Namespaced",
+    crdName: "listenersets.gateway.networking.k8s.io",
+    label: "Listener Set",
+    labelPlural: "Listener Sets",
+    description: "Additional listeners attached to a parent gateway",
+    icon: "layers",
+    listColumns: [
+      {
+        id: "parent",
+        header: "Gateway",
+        mono: true,
+        accessor: (r) => {
+          const ref = spec(r).parentRef as Record<string, unknown> | undefined;
+          if (!ref?.name) return undefined;
+          return [ref.namespace, ref.name].filter(Boolean).join("/");
+        },
+      },
+      {
+        id: "listeners",
+        header: "Listeners",
+        accessor: (r) => {
+          const listeners = spec(r).listeners;
+          if (!Array.isArray(listeners)) return undefined;
+          return listeners.map((l) => {
+            const x = l as Record<string, unknown>;
+            return `${x.protocol}:${x.port}`;
+          });
+        },
+      },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${GATEWAY_API_GROUP}/v1`,
+      kind: "ListenerSet",
+      metadata: { name: "my-listener-set", namespace },
+      spec: {
+        parentRef: { group: GATEWAY_API_GROUP, kind: "Gateway", name: "my-gateway" },
+        listeners: [{ name: "extra-http", protocol: "HTTP", port: 8080 }],
+      },
+    }),
+    docsUrl: "https://gateway-api.sigs.k8s.io/geps/gep-1713/",
+  },
+  {
     id: "backends",
     kind: "AgentgatewayBackend",
     group: AGENTGATEWAY_GROUP,
