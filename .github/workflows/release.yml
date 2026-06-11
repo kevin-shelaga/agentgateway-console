@@ -161,7 +161,7 @@ jobs:
             exit 0
           fi
 
-          npm publish "dist/agentgateway-console-${VERSION}.tgz" --ignore-scripts --provenance --access public
+          npm publish "./dist/agentgateway-console-${VERSION}.tgz" --ignore-scripts --provenance --access public
 
   github-release:
     needs: [validate, publish]
