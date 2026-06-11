@@ -129,4 +129,13 @@ jobs:
       - name: Publish package
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish --ignore-scripts --provenance --access public
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          if npm view "agentgateway-console@${VERSION}" version >/dev/null 2>&1; then
+            echo "agentgateway-console@${VERSION} is already published; skipping"
+            exit 0
+          fi
+
+          npm publish --ignore-scripts --provenance --access public
