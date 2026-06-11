@@ -266,10 +266,19 @@ The UI is **registry-driven**: one descriptor per kind supplies columns, status 
 npm run dev      # dev server with hot reload
 npm test         # vitest unit tests
 npm run build    # production build (standalone output)
+npm run test:e2e # Playwright smoke tests against the built CLI server
 npm start        # serve the production build
 
 node scripts/extract-schemas.mjs   # refresh bundled CRD schema fallbacks
 ```
+
+Pull requests run unit coverage, a production build, Playwright smoke e2e, and a Docker build smoke test in GitHub Actions. A separate kind e2e workflow creates a local kind cluster in CI and runs:
+
+```bash
+npm run test:e2e:kind
+```
+
+The kind workflow runs on `main`, manual dispatch, and same-repository pull requests. Forked pull requests skip it because the test job creates a Kubernetes cluster and exercises the local kubeconfig path.
 
 Built with [Next.js 16](https://nextjs.org) (App Router) · [React 19](https://react.dev) · [Tailwind CSS 4](https://tailwindcss.com) · [shadcn/ui](https://ui.shadcn.com) · [CodeMirror 6](https://codemirror.net) · [TanStack Query](https://tanstack.com/query) · [AJV](https://ajv.js.org) · [@kubernetes/client-node](https://github.com/kubernetes-client/javascript).
 
@@ -282,14 +291,16 @@ Releases publish two artifacts:
 - `ghcr.io/kevin-shelaga/agentgateway-console` for container deployments.
 - `agentgateway-console` on npm for `npx agentgateway-console`.
 
-Release flow:
+Release flow from an up-to-date `main` branch:
 
 ```bash
 npm version patch
-git push origin main --tags
+VERSION="v$(node -p "require('./package.json').version")"
+git push origin main
+git push origin "$VERSION"
 ```
 
-Publishing is handled by GitHub Actions. Strict semver tags (`vX.Y.Z`) from `main` publish the npm package and tag the container image as `vX.Y.Z` and `latest`. Manual release validation is available from the workflow, but does not publish without a trusted tag or release context. npm publishing requires the repository `NPM_TOKEN` secret.
+Publishing is handled by GitHub Actions. Strict semver tags (`vX.Y.Z`) from `main` publish the npm package and tag the container image as `vX.Y.Z` and `latest`. Manual release validation is available from the workflow, but does not publish without a trusted tag or release context. npm publishing uses provenance (`--provenance`) and requires the repository `NPM_TOKEN` secret plus `id-token: write` permission in the release workflow.
 
 ## 📄 License
 

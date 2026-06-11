@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
 
       - name: Detect semver tag
         id: release
@@ -44,6 +46,14 @@ jobs:
             echo "Refusing to publish non-semver tag ${GITHUB_REF_NAME}" >&2
             exit 1
           fi
+
+      - name: Verify release commit is on main
+        if: steps.release.outputs.is_semver == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor HEAD origin/main
 
       - name: Login to GHCR
         uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
