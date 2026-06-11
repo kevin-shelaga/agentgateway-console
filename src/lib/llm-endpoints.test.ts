@@ -24,10 +24,20 @@ describe("resolveLlmEndpoints", () => {
     expect(endpoints[0].url).toBe("http://4.229.185.215:8080");
   });
 
-  it("returns nothing when no route references the backend or gateway has no address", () => {
+  it("returns nothing when no route references the backend", () => {
     expect(resolveLlmEndpoints(aiBackend, [], [gateway])).toEqual([]);
+  });
+
+  it("falls back to the API-server service proxy when the gateway has no address", () => {
     const noAddr: K8sResource = { ...gateway, status: {} };
-    expect(resolveLlmEndpoints(aiBackend, [httpRoute], [noAddr])).toEqual([]);
+    const endpoints = resolveLlmEndpoints(aiBackend, [httpRoute], [noAddr]);
+    // HTTP listener only — the proxy hop terminates TLS, HTTPS listeners are skipped.
+    expect(endpoints).toHaveLength(1);
+    expect(endpoints[0]).toMatchObject({
+      url: "svc://agentgateway-system/api-agentgateway:80",
+      viaApiServer: true,
+      gateway: "agentgateway-system/api-agentgateway",
+    });
   });
 
   it("skips non-HTTP listeners", () => {

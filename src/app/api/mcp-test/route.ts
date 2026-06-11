@@ -2,7 +2,8 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { NextRequest, NextResponse } from "next/server";
 import { Agent } from "undici";
-import { forbidden } from "@/lib/k8s/registry-server";
+import { contextFrom, forbidden } from "@/lib/k8s/registry-server";
+import { parseSvcUrl, serviceProxyTarget } from "@/lib/k8s/service-proxy";
 
 export interface McpTestRequest {
   url: string;
@@ -34,15 +35,6 @@ export async function POST(req: NextRequest) {
     return forbidden("request body must be JSON");
   }
 
-  let target: URL;
-  try {
-    target = new URL(test.url);
-  } catch {
-    return forbidden(`invalid url: ${test.url}`);
-  }
-  if (target.protocol !== "http:" && target.protocol !== "https:") {
-    return forbidden("only http(s) urls are supported");
-  }
   if (test.action !== "listTools" && test.action !== "callTool") {
     return forbidden(`unknown action: ${String(test.action)}`);
   }
@@ -59,9 +51,39 @@ export async function POST(req: NextRequest) {
   const timeoutMs = Math.min(test.timeoutMs ?? 60_000, MAX_TIMEOUT_MS);
   // undici extension; absent from the DOM fetch types — injected via a
   // custom fetch because the transport owns its own request lifecycle.
-  const dispatcher = test.insecureTls
+  let dispatcher = test.insecureTls
     ? new Agent({ connect: { rejectUnauthorized: false } })
     : undefined;
+
+  let target: URL;
+  const svc = parseSvcUrl(test.url);
+  if (svc) {
+    // Gateway without a published address: go through the API-server proxy.
+    if (test.authHeader?.name.toLowerCase() === "authorization" && test.authHeader.value) {
+      return forbidden(
+        "the API-server proxy consumes the Authorization header; use a different header name (e.g. x-api-key) or a direct gateway address",
+      );
+    }
+    try {
+      const proxied = await serviceProxyTarget(contextFrom(req), svc, test.insecureTls);
+      target = new URL(proxied.url);
+      Object.assign(headers, proxied.headers);
+      delete headers.host; // the API server routes by its own host
+      dispatcher = proxied.dispatcher;
+    } catch (err) {
+      return forbidden(err instanceof Error ? err.message : String(err));
+    }
+  } else {
+    try {
+      target = new URL(test.url);
+    } catch {
+      return forbidden(`invalid url: ${test.url}`);
+    }
+    if (target.protocol !== "http:" && target.protocol !== "https:") {
+      return forbidden("only http(s) and svc:// urls are supported");
+    }
+  }
+
   const insecureFetch = dispatcher
     ? (url: string | URL, init?: RequestInit) =>
         fetch(url, { ...init, ...({ dispatcher } as object) })
