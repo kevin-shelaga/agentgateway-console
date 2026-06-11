@@ -30,6 +30,9 @@
 ![alt text](./images/rw.png)
 
 ![alt text](./images/cost.png)
+
+![alt text](./images/playground.png)
+
 ---
 
 ## Why this exists
