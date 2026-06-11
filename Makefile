@@ -45,7 +45,8 @@ demo-app:
 
 # Mixed traffic from inside the cluster (no port-forward juggling):
 # chat completions against both models, echo hits, and some 404s for the
-# status-class bars. Runs for TRAFFIC_SECONDS (default 300).
+# status-class bars. Rotates x-user-id between three users so the per-user
+# token charts populate. Runs for TRAFFIC_SECONDS (default 300).
 demo-traffic:
 	$(KUBECTL) -n default delete pod demo-traffic --ignore-not-found --wait=true
 	$(KUBECTL) -n default run demo-traffic --image=curlimages/curl --restart=Never \
@@ -54,11 +55,14 @@ demo-traffic:
 		i=0; \
 		while [ $$(date +%s) -lt $$end ]; do \
 		  i=$$((i+1)); \
+		  case $$((i % 3)) in \
+		    0) user=alice ;; 1) user=bob ;; 2) user=carol ;; \
+		  esac; \
 		  body="{\"model\":\"demo\",\"messages\":[{\"role\":\"user\",\"content\":\"hello $$i\"}]}"; \
 		  case $$((i % 5)) in \
-		    0|1) curl -s -o /dev/null -X POST -H "content-type: application/json" -d "$$body" http://demo-gateway.default/v1/chat/completions ;; \
-		    2)   curl -s -o /dev/null -X POST -H "content-type: application/json" -d "$$body" http://demo-gateway.default/v2/chat/completions ;; \
-		    3)   curl -s -o /dev/null http://demo-gateway.default/echo ;; \
+		    0|1) curl -s -o /dev/null -X POST -H "content-type: application/json" -H "x-user-id: $$user" -d "$$body" http://demo-gateway.default/v1/chat/completions ;; \
+		    2)   curl -s -o /dev/null -X POST -H "content-type: application/json" -H "x-user-id: $$user" -d "$$body" http://demo-gateway.default/v2/chat/completions ;; \
+		    3)   curl -s -o /dev/null -H "x-user-id: $$user" http://demo-gateway.default/echo ;; \
 		    4)   curl -s -o /dev/null http://demo-gateway.default/does-not-exist ;; \
 		  esac; \
 		  sleep 0.5; \

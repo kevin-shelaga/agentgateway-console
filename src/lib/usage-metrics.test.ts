@@ -4,6 +4,10 @@ import {
   computeRates,
   groupBy,
   recordScrape,
+  sessionTotalsBy,
+  sliceWindow,
+  sumTotals,
+  totals,
   usageSeries,
 } from "./usage-metrics";
 import type { PromSample } from "./prom-parse";
@@ -39,6 +43,74 @@ describe("rate computation across polls", () => {
     const series = usageSeries("m_total", {});
     expect(series.length).toBeLessThanOrEqual(120);
     expect(series.at(-1)!.v).toBeCloseTo(10 / 15);
+  });
+});
+
+describe("totals", () => {
+  beforeEach(clearUsageHistory);
+
+  it("reports lifetime values and session deltas per series", () => {
+    recordScrape([sample("t_sum", { user: "alice" }, 1000)], 0);
+    recordScrape([sample("t_sum", { user: "alice" }, 1600)], 15_000);
+    recordScrape([sample("t_sum", { user: "alice" }, 2000)], 30_000);
+    const [entry] = totals("t_sum");
+    expect(entry.value).toBe(2000); // since pod start
+    expect(entry.sessionDelta).toBe(1000); // observed while open: 600 + 400
+  });
+
+  it("session deltas survive counter resets without going negative", () => {
+    recordScrape([sample("t_sum", {}, 500)], 0);
+    recordScrape([sample("t_sum", {}, 800)], 15_000); // +300
+    recordScrape([sample("t_sum", {}, 100)], 30_000); // restart → +0
+    recordScrape([sample("t_sum", {}, 250)], 45_000); // +150
+    expect(totals("t_sum")[0].sessionDelta).toBe(450);
+  });
+
+  it("sumTotals aggregates with an optional label filter", () => {
+    recordScrape(
+      [
+        sample("t_sum", { gen_ai_token_type: "input" }, 100),
+        sample("t_sum", { gen_ai_token_type: "output" }, 40),
+      ],
+      0,
+    );
+    recordScrape(
+      [
+        sample("t_sum", { gen_ai_token_type: "input" }, 160),
+        sample("t_sum", { gen_ai_token_type: "output" }, 70),
+      ],
+      15_000,
+    );
+    const all = sumTotals(totals("t_sum"));
+    expect(all.lifetime).toBe(230);
+    expect(all.session).toBe(90);
+    const input = sumTotals(totals("t_sum"), (l) => l.gen_ai_token_type === "input");
+    expect(input.lifetime).toBe(160);
+    expect(input.session).toBe(60);
+  });
+
+  it("sessionTotalsBy groups session deltas by a label, descending", () => {
+    recordScrape(
+      [sample("t_sum", { user: "alice" }, 0), sample("t_sum", { user: "bob" }, 0)],
+      0,
+    );
+    recordScrape(
+      [sample("t_sum", { user: "alice" }, 100), sample("t_sum", { user: "bob" }, 700)],
+      15_000,
+    );
+    expect(sessionTotalsBy(totals("t_sum"), "user")).toEqual([
+      { key: "bob", total: 700 },
+      { key: "alice", total: 100 },
+    ]);
+  });
+});
+
+describe("sliceWindow", () => {
+  it("keeps only points within the window, anchored to the newest point", () => {
+    const points = [0, 1, 2, 3, 4].map((i) => ({ t: i * 60_000, v: i }));
+    expect(sliceWindow(points, 2 * 60_000).map((p) => p.v)).toEqual([2, 3, 4]);
+    expect(sliceWindow(points, 60 * 60_000)).toHaveLength(5);
+    expect(sliceWindow([], 60_000)).toEqual([]);
   });
 });
 
