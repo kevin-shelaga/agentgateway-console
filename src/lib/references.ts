@@ -32,7 +32,8 @@ export function getReferences(res: K8sResource): ResourceRef[] {
 
   switch (res.kind) {
     case "HTTPRoute":
-    case "GRPCRoute": {
+    case "GRPCRoute":
+    case "TLSRoute": {
       for (const p of asArray(spec.parentRefs)) {
         out.push(
           ref((p.kind as string) ?? "Gateway", p.name as string, "parent", (p.namespace as string) ?? ns),
@@ -80,7 +81,8 @@ export function getReferences(res: K8sResource): ResourceRef[] {
       break;
     }
     case "AgentgatewayPolicy":
-    case "EnterpriseAgentgatewayPolicy": {
+    case "EnterpriseAgentgatewayPolicy":
+    case "BackendTLSPolicy": {
       for (const t of asArray(spec.targetRefs)) {
         out.push(ref(t.kind as string, t.name as string, "target", ns));
       }

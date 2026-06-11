@@ -6,6 +6,9 @@ import { GatewayClassForm } from "./gatewayclass-form";
 import { GrpcRouteForm } from "./grpcroute-form";
 import { HttpRouteForm } from "./httproute-form";
 import { ListenerSetForm } from "./listenerset-form";
+import { BackendTlsPolicyForm } from "./backendtlspolicy-form";
+import { ReferenceGrantForm } from "./referencegrant-form";
+import { TlsRouteForm } from "./tlsroute-form";
 import { ParametersForm } from "./parameters-form";
 import { PolicyForm } from "./policy-form";
 
@@ -20,6 +23,9 @@ export const FORMS: Record<string, ComponentType<ResourceFormProps>> = {
   grpcroutes: GrpcRouteForm,
   httproutes: HttpRouteForm,
   listenersets: ListenerSetForm,
+  tlsroutes: TlsRouteForm,
+  backendtlspolicies: BackendTlsPolicyForm,
+  referencegrants: ReferenceGrantForm,
   parameters: ParametersForm,
   policies: PolicyForm,
 };

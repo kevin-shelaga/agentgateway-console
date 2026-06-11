@@ -84,6 +84,8 @@ let child;
 try {
   mkdirSync(installDir);
 
+  run("npm", ["run", "build"], { env: npmEnv });
+
   const packOutput = run("npm", ["pack", "--ignore-scripts", "--pack-destination", tmp], {
     capture: true,
     env: npmEnv,

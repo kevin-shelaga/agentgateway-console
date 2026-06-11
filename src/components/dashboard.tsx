@@ -121,6 +121,7 @@ export function Dashboard() {
   const entBackends = useResourceListOptional(entBackendsDesc);
   const entPolicies = useResourceListOptional(entPoliciesDesc);
   const listenersets = useResourceListOptional(listenersetsDesc);
+  const tlsroutes = useResourceListOptional(getResource("tlsroutes")!);
   const entListenersets = useResourceListOptional(entListenersetsDesc);
 
   const allBackendsData = useMemo(
@@ -140,8 +141,9 @@ export function Dashboard() {
     () => [
       ...withStatus(httproutesDesc, httproutes.data),
       ...withStatus(grpcroutesDesc, grpcroutes.data),
+      ...withStatus(getResource("tlsroutes")!, tlsroutes.data),
     ],
-    [httproutes.data, grpcroutes.data, httproutesDesc, grpcroutesDesc],
+    [httproutes.data, grpcroutes.data, tlsroutes.data, httproutesDesc, grpcroutesDesc],
   );
   // Status extraction is kind-agnostic (summarizeStatus) for these kinds.
   const backendItems = useMemo(() => withStatus(backendsDesc, allBackendsData), [allBackendsData, backendsDesc]);
@@ -159,7 +161,7 @@ export function Dashboard() {
       ...gatewayItems.map((i) => ({ ...i, desc: gatewaysDesc })),
       ...routeItems.map((i) => ({
         ...i,
-        desc: i.res.kind === "GRPCRoute" ? grpcroutesDesc : httproutesDesc,
+        desc: getResourceByKind(i.res.kind) ?? httproutesDesc,
       })),
       ...backendItems.map((i) => ({ ...i, desc: getResourceByKind(i.res.kind) ?? backendsDesc })),
       ...policyItems.map((i) => ({ ...i, desc: getResourceByKind(i.res.kind) ?? policiesDesc })),
@@ -182,11 +184,12 @@ export function Dashboard() {
       gateways: gateways.data!,
       httproutes: httproutes.data!,
       grpcroutes: grpcroutes.data!,
+      tlsroutes: tlsroutes.data ?? [],
       backends: allBackendsData,
       policies: allPoliciesData,
       gatewayclasses: gatewayclasses.data!,
     });
-  }, [allListsLoaded, gateways.data, httproutes.data, grpcroutes.data, allBackendsData, allPoliciesData, gatewayclasses.data]);
+  }, [allListsLoaded, gateways.data, httproutes.data, grpcroutes.data, tlsroutes.data, allBackendsData, allPoliciesData, gatewayclasses.data]);
 
   const protocols = useMemo(() => protocolDistribution(gateways.data ?? []), [gateways.data]);
   const protocolMax = Math.max(1, ...protocols.map((p) => p.count));

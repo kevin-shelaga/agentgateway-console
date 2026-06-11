@@ -62,6 +62,11 @@ export interface ResourceDescriptor {
   scope: "Namespaced" | "Cluster";
   /** CRD metadata.name, used to fetch the validation schema. */
   crdName: string;
+  /**
+   * Older API versions to use when the cluster's CRD doesn't serve
+   * `version` (Gateway API channel/version skew, e.g. TLSRoute v1alpha3).
+   */
+  versionFallbacks?: string[];
   label: string;
   labelPlural: string;
   description: string;

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { asKubernetesObject, getObjectClient } from "@/lib/k8s/client";
 import {
+  alignManifestVersion,
   CLUSTER_SEGMENT,
   contextFrom,
   errorResponse,
   forbidden,
+  resolveApiVersion,
   resolveDescriptor,
   stripSecretData,
 } from "@/lib/k8s/registry-server";
@@ -20,9 +22,9 @@ type Params = {
   }>;
 };
 
-function refOf(desc: ResourceDescriptor, namespace: string, name: string) {
+function refOf(desc: ResourceDescriptor, apiVersion: string, namespace: string, name: string) {
   return {
-    apiVersion: apiVersionOf(desc),
+    apiVersion,
     kind: desc.kind,
     metadata: {
       name,
@@ -37,8 +39,9 @@ export async function GET(req: NextRequest, { params }: Params) {
   if (!desc) return forbidden(`unsupported resource: ${group}/${version}/${plural}`);
 
   try {
-    const client = getObjectClient(contextFrom(req));
-    const obj = await client.read(refOf(desc, namespace, name));
+    const context = contextFrom(req);
+    const client = getObjectClient(context);
+    const obj = await client.read(refOf(desc, await resolveApiVersion(desc, context), namespace, name));
     return NextResponse.json(stripSecretData(obj as K8sResource));
   } catch (err) {
     return errorResponse(err);
@@ -56,8 +59,10 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (manifest.metadata?.name !== name) {
       return forbidden(`manifest name "${manifest.metadata?.name}" does not match URL "${name}"`);
     }
-    const client = getObjectClient(contextFrom(req));
-    const updated = await client.replace(asKubernetesObject(manifest));
+    const context = contextFrom(req);
+    const client = getObjectClient(context);
+    const aligned = alignManifestVersion(manifest, desc, await resolveApiVersion(desc, context));
+    const updated = await client.replace(asKubernetesObject(aligned));
     return NextResponse.json(updated);
   } catch (err) {
     return errorResponse(err);
@@ -71,8 +76,9 @@ export async function DELETE(req: NextRequest, { params }: Params) {
   if (desc.readOnly) return forbidden(`${desc.kind} is read-only in this console`);
 
   try {
-    const client = getObjectClient(contextFrom(req));
-    const status = await client.delete(refOf(desc, namespace, name));
+    const context = contextFrom(req);
+    const client = getObjectClient(context);
+    const status = await client.delete(refOf(desc, await resolveApiVersion(desc, context), namespace, name));
     return NextResponse.json(status);
   } catch (err) {
     return errorResponse(err);

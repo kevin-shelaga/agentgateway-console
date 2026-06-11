@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { asKubernetesObject, getObjectClient } from "@/lib/k8s/client";
 import {
+  alignManifestVersion,
   contextFrom,
   errorResponse,
   forbidden,
+  resolveApiVersion,
   resolveDescriptor,
   stripSecretData,
 } from "@/lib/k8s/registry-server";
@@ -18,9 +20,10 @@ export async function GET(req: NextRequest, { params }: Params) {
 
   const namespace = req.nextUrl.searchParams.get("namespace") ?? undefined;
   try {
-    const client = getObjectClient(contextFrom(req));
+    const context = contextFrom(req);
+    const client = getObjectClient(context);
     const list = await client.list(
-      apiVersionOf(desc),
+      await resolveApiVersion(desc, context),
       desc.kind,
       desc.scope === "Namespaced" ? namespace : undefined,
     );
@@ -44,8 +47,10 @@ export async function POST(req: NextRequest, { params }: Params) {
         `manifest is ${manifest.apiVersion}/${manifest.kind}, expected ${apiVersionOf(desc)}/${desc.kind}`,
       );
     }
-    const client = getObjectClient(contextFrom(req));
-    const created = await client.create(asKubernetesObject(manifest));
+    const context = contextFrom(req);
+    const client = getObjectClient(context);
+    const aligned = alignManifestVersion(manifest, desc, await resolveApiVersion(desc, context));
+    const created = await client.create(asKubernetesObject(aligned));
     return NextResponse.json(created, { status: 201 });
   } catch (err) {
     return errorResponse(err);

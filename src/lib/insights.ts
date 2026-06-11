@@ -5,6 +5,8 @@ export interface ClusterSnapshot {
   gateways: K8sResource[];
   httproutes: K8sResource[];
   grpcroutes: K8sResource[];
+  /** Optional: clusters without the TLSRoute CRD just omit these. */
+  tlsroutes?: K8sResource[];
   /** OSS and enterprise backends together (kinds distinguish them). */
   backends: K8sResource[];
   /** OSS and enterprise policies together. */
@@ -17,6 +19,7 @@ const BACKEND_KINDS = new Set(["AgentgatewayBackend", "EnterpriseAgentgatewayBac
 const KIND_TO_DESC_ID: Record<string, string> = {
   HTTPRoute: "httproutes",
   GRPCRoute: "grpcroutes",
+  TLSRoute: "tlsroutes",
   AgentgatewayBackend: "backends",
   EnterpriseAgentgatewayBackend: "ent-backends",
   AgentgatewayPolicy: "policies",
@@ -53,16 +56,15 @@ export function findConfigIssues(snap: ClusterSnapshot): ConfigIssue[] {
     snap.backends.map((b) => key(b.kind, b.metadata.namespace, b.metadata.name)),
   );
   const classNames = new Set(snap.gatewayclasses.map((c) => c.metadata.name));
+  const allRoutes = [...snap.httproutes, ...snap.grpcroutes, ...(snap.tlsroutes ?? [])];
   const routeKeys = new Set(
-    [...snap.httproutes, ...snap.grpcroutes].map((r) =>
-      key(r.kind, r.metadata.namespace, r.metadata.name),
-    ),
+    allRoutes.map((r) => key(r.kind, r.metadata.namespace, r.metadata.name)),
   );
 
   const referencedGateways = new Set<string>();
   const referencedBackends = new Set<string>();
 
-  for (const route of [...snap.httproutes, ...snap.grpcroutes]) {
+  for (const route of allRoutes) {
     for (const ref of getReferences(route)) {
       const refKey = key(ref.kind, ref.namespace, ref.name);
       if (ref.kind === "Gateway") {
@@ -74,7 +76,7 @@ export function findConfigIssues(snap: ClusterSnapshot): ConfigIssue[] {
             kind: route.kind,
             name: route.metadata.name,
             namespace: route.metadata.namespace,
-            descId: route.kind === "GRPCRoute" ? "grpcroutes" : "httproutes",
+            descId: KIND_TO_DESC_ID[route.kind] ?? "httproutes",
           });
         }
       } else if (BACKEND_KINDS.has(ref.kind)) {
@@ -86,7 +88,7 @@ export function findConfigIssues(snap: ClusterSnapshot): ConfigIssue[] {
             kind: route.kind,
             name: route.metadata.name,
             namespace: route.metadata.namespace,
-            descId: route.kind === "GRPCRoute" ? "grpcroutes" : "httproutes",
+            descId: KIND_TO_DESC_ID[route.kind] ?? "httproutes",
           });
         }
       }

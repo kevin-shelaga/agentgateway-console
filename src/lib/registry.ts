@@ -265,6 +265,159 @@ export const RESOURCES: ResourceDescriptor[] = [
     docsUrl: "https://gateway-api.sigs.k8s.io/api-types/grpcroute/",
   },
   {
+    id: "tlsroutes",
+    kind: "TLSRoute",
+    group: GATEWAY_API_GROUP,
+    version: "v1",
+    plural: "tlsroutes",
+    scope: "Namespaced",
+    crdName: "tlsroutes.gateway.networking.k8s.io",
+    versionFallbacks: ["v1alpha3", "v1alpha2"],
+    label: "TLS Route",
+    labelPlural: "TLS Routes",
+    description: "SNI-based TLS passthrough routing from gateways to backends",
+    icon: "route",
+    listColumns: [
+      {
+        id: "hostnames",
+        header: "Hostnames",
+        mono: true,
+        accessor: (r) => (spec(r).hostnames as string[] | undefined) ?? "*",
+      },
+      {
+        id: "parents",
+        header: "Gateways",
+        accessor: (r) => {
+          const refs = spec(r).parentRefs;
+          if (!Array.isArray(refs)) return undefined;
+          return refs.map((p) => (p as Record<string, unknown>).name as string);
+        },
+      },
+      {
+        id: "rules",
+        header: "Rules",
+        accessor: (r) => {
+          const rules = spec(r).rules;
+          return Array.isArray(rules) ? String(rules.length) : "0";
+        },
+      },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${GATEWAY_API_GROUP}/v1`,
+      kind: "TLSRoute",
+      metadata: { name: "my-tls-route", namespace },
+      spec: {
+        parentRefs: [{ name: "my-gateway", sectionName: "tls" }],
+        hostnames: ["secure.example.com"],
+        rules: [{ backendRefs: [{ name: "my-service", port: 8443 }] }],
+      },
+    }),
+    docsUrl: "https://gateway-api.sigs.k8s.io/api-types/tlsroute/",
+  },
+  {
+    id: "backendtlspolicies",
+    kind: "BackendTLSPolicy",
+    group: GATEWAY_API_GROUP,
+    version: "v1",
+    plural: "backendtlspolicies",
+    scope: "Namespaced",
+    crdName: "backendtlspolicies.gateway.networking.k8s.io",
+    versionFallbacks: ["v1alpha3"],
+    label: "Backend TLS Policy",
+    labelPlural: "Backend TLS Policies",
+    description: "TLS verification for connections from the gateway to backends",
+    icon: "shieldCheck",
+    listColumns: [
+      { id: "targets", header: "Targets", mono: true, accessor: policyTargets },
+      {
+        id: "hostname",
+        header: "Hostname",
+        mono: true,
+        accessor: (r) => {
+          const validation = spec(r).validation as Record<string, unknown> | undefined;
+          return validation?.hostname as string | undefined;
+        },
+      },
+      {
+        id: "ca",
+        header: "CA",
+        accessor: (r) => {
+          const validation = spec(r).validation as Record<string, unknown> | undefined;
+          if (typeof validation?.wellKnownCACertificates === "string") {
+            return validation.wellKnownCACertificates as string;
+          }
+          const refs = validation?.caCertificateRefs;
+          return Array.isArray(refs) ? `${refs.length} cert ref(s)` : undefined;
+        },
+      },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${GATEWAY_API_GROUP}/v1`,
+      kind: "BackendTLSPolicy",
+      metadata: { name: "my-backend-tls", namespace },
+      spec: {
+        targetRefs: [{ group: "", kind: "Service", name: "my-service" }],
+        validation: { hostname: "my-service.example.com", wellKnownCACertificates: "System" },
+      },
+    }),
+    docsUrl: "https://gateway-api.sigs.k8s.io/api-types/backendtlspolicy/",
+  },
+  {
+    id: "referencegrants",
+    kind: "ReferenceGrant",
+    group: GATEWAY_API_GROUP,
+    version: "v1",
+    plural: "referencegrants",
+    scope: "Namespaced",
+    crdName: "referencegrants.gateway.networking.k8s.io",
+    versionFallbacks: ["v1beta1"],
+    label: "Reference Grant",
+    labelPlural: "Reference Grants",
+    description: "Permits references into this namespace from other namespaces",
+    icon: "network",
+    listColumns: [
+      {
+        id: "from",
+        header: "From",
+        mono: true,
+        accessor: (r) => {
+          const from = spec(r).from;
+          if (!Array.isArray(from)) return undefined;
+          return from.map((f) => {
+            const x = f as Record<string, unknown>;
+            return `${x.kind} @ ${x.namespace}`;
+          });
+        },
+      },
+      {
+        id: "to",
+        header: "To",
+        mono: true,
+        accessor: (r) => {
+          const to = spec(r).to;
+          if (!Array.isArray(to)) return undefined;
+          return to.map((t) => {
+            const x = t as Record<string, unknown>;
+            return x.name ? `${x.kind}/${x.name}` : (x.kind as string);
+          });
+        },
+      },
+    ],
+    getStatus: noStatus,
+    template: (namespace) => ({
+      apiVersion: `${GATEWAY_API_GROUP}/v1`,
+      kind: "ReferenceGrant",
+      metadata: { name: "my-reference-grant", namespace },
+      spec: {
+        from: [{ group: GATEWAY_API_GROUP, kind: "HTTPRoute", namespace: "default" }],
+        to: [{ group: "", kind: "Service" }],
+      },
+    }),
+    docsUrl: "https://gateway-api.sigs.k8s.io/api-types/referencegrant/",
+  },
+  {
     id: "listenersets",
     kind: "ListenerSet",
     group: GATEWAY_API_GROUP,

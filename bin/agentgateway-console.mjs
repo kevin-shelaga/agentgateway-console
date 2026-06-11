@@ -60,8 +60,10 @@ Options:
 
 function ensureBuild(rebuild) {
   const server = path.join(root, ".next", "standalone", "server.js");
-  if (rebuild || !existsSync(server)) {
-    console.log("• building console (first run)…");
+  const sourceApp = path.join(root, "src", "app");
+
+  function buildFromSource() {
+    console.log("building console...");
     const result = spawnSync("npx", ["--no-install", "next", "build"], {
       cwd: root,
       stdio: "inherit",
@@ -71,6 +73,21 @@ function ensureBuild(rebuild) {
       process.exit(result.status ?? 1);
     }
   }
+
+  if (rebuild) {
+    if (!existsSync(sourceApp)) {
+      console.error("this package ships prebuilt output; --rebuild is only available from a source checkout");
+      process.exit(1);
+    }
+    buildFromSource();
+  } else if (!existsSync(server)) {
+    if (!existsSync(sourceApp)) {
+      console.error("prebuilt server output is missing; reinstall the package or install from a source checkout");
+      process.exit(1);
+    }
+    buildFromSource();
+  }
+
   // The standalone server expects static assets and public/ beside it.
   const staticSrc = path.join(root, ".next", "static");
   const staticDest = path.join(root, ".next", "standalone", ".next", "static");

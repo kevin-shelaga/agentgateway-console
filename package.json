@@ -21,12 +21,9 @@
   },
   "files": [
     "bin/",
-    "src/",
+    ".next/standalone/",
+    ".next/static/",
     "public/",
-    "components.json",
-    "next.config.ts",
-    "postcss.config.mjs",
-    "tsconfig.json",
     "README.md",
     "LICENSE"
   ],

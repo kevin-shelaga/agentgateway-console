@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { asKubernetesObject, getObjectClient } from "@/lib/k8s/client";
-import { contextFrom, errorResponse, forbidden } from "@/lib/k8s/registry-server";
+import {
+  alignManifestVersion,
+  contextFrom,
+  errorResponse,
+  forbidden,
+  resolveApiVersion,
+} from "@/lib/k8s/registry-server";
 import { ALL_RESOURCES } from "@/lib/registry";
 import { apiVersionOf, type K8sResource } from "@/lib/types";
 
@@ -31,11 +37,13 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const client = getObjectClient(contextFrom(req));
+    const context = contextFrom(req);
+    const client = getObjectClient(context);
+    const aligned = alignManifestVersion(manifest, desc, await resolveApiVersion(desc, context));
     if (mode === "update") {
-      await client.replace(asKubernetesObject(manifest), undefined, "All");
+      await client.replace(asKubernetesObject(aligned), undefined, "All");
     } else {
-      await client.create(asKubernetesObject(manifest), undefined, "All");
+      await client.create(asKubernetesObject(aligned), undefined, "All");
     }
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -45,7 +45,16 @@ export function ResourceEditor({
   const [dryRunOk, setDryRunOk] = useState(false);
 
   const { data: schemaData } = useSchema(desc.crdName);
-  const schema = (schemaData?.versions?.[desc.version] as object | undefined) ?? null;
+  // Prefer the registry version's schema; fall back to whatever the cluster
+  // serves (Gateway API version skew, e.g. TLSRoute v1alpha3).
+  const schema = useMemo(() => {
+    const versions = schemaData?.versions ?? {};
+    const candidates = [desc.version, ...(desc.versionFallbacks ?? []), ...Object.keys(versions)];
+    for (const v of candidates) {
+      if (versions[v]) return versions[v] as object;
+    }
+    return null;
+  }, [schemaData, desc]);
 
   const schemaIssues = useMemo(() => {
     if (!schema || yamlParseError) return [];
