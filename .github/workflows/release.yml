@@ -162,3 +162,47 @@ jobs:
           fi
 
           npm publish "dist/agentgateway-console-${VERSION}.tgz" --ignore-scripts --provenance --access public
+
+  github-release:
+    needs: [validate, publish]
+    # Run for tag-driven releases even when npm publish was skipped because
+    # the version already exists; never run if validation or publish failed.
+    if: >-
+      always() &&
+      needs.validate.result == 'success' &&
+      needs.validate.outputs.should_publish == 'true' &&
+      needs.publish.result != 'failure' &&
+      needs.publish.result != 'cancelled'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - name: Download verified package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: npm-package-${{ needs.validate.outputs.version }}
+          path: dist
+
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum "agentgateway-console-${VERSION}.tgz" > "agentgateway-console-${VERSION}.sha256"
+
+      - name: Create or update GitHub release with assets
+        run: |
+          set -euo pipefail
+          TAG="v${VERSION}"
+          ASSETS=(dist/agentgateway-console-"${VERSION}".tgz dist/agentgateway-console-"${VERSION}".sha256)
+
+          if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "${ASSETS[@]}" --clobber -R "$GITHUB_REPOSITORY"
+          else
+            gh release create "$TAG" "${ASSETS[@]}" \
+              --verify-tag \
+              --title "$TAG" \
+              --generate-notes \
+              -R "$GITHUB_REPOSITORY"
+          fi
