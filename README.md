@@ -121,6 +121,19 @@ npx agentgateway-console -p 4000 -c my-context # pick port + starting context
 npx agentgateway-console --kubeconfig ~/.kube/staging --no-open
 ```
 
+### Demo environment
+
+No cluster handy? The repo ships a self-contained demo — a kind cluster with agentgateway, a Gateway/HTTPRoutes, two AI backends wired to a mock LLM (randomized token counts), and a traffic generator so every page of the console has live data. Requires `docker`, `kind`, `kubectl`, and `helm`:
+
+```bash
+make demo-up        # cluster + agentgateway + demo app
+make demo-traffic   # send mixed traffic for ~5 min (Usage page lights up in ~30s)
+make demo-console   # console on the kind context
+make demo-down      # tear down
+```
+
+See [`demo/README.md`](demo/README.md) for details and knobs.
+
 ### Configuration
 
 | Variable | Default | Effect |
