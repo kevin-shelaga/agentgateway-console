@@ -85,5 +85,5 @@ test("server-side dry-run rejects an invalid Gateway without persisting it", asy
   const list = await request.get("/api/resources/gateway.networking.k8s.io/v1/gateways?namespace=default");
   expect(list.ok()).toBeTruthy();
   const listBody = await list.json();
-  expect((listBody.items ?? []).some((item) => item.metadata?.name === name)).toBe(false);
+  expect((listBody.items ?? []).some((item: { metadata?: { name?: string } }) => item.metadata?.name === name)).toBe(false);
 });

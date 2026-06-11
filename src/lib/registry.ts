@@ -12,10 +12,10 @@ function noStatus(res: K8sResource): StatusSummary {
   return { state: "Unknown", message: "", conditions: [] };
 }
 
-/** Which top-level key of an AgentgatewayBackend spec is set. */
+/** Which top-level key of an (Enterprise)AgentgatewayBackend spec is set. */
 export function backendType(res: K8sResource): string {
   const s = spec(res);
-  for (const key of ["ai", "mcp", "static", "dynamicForwardProxy", "aws", "a2a"]) {
+  for (const key of ["ai", "mcp", "entMcp", "static", "dynamicForwardProxy", "aws", "a2a"]) {
     if (s[key] !== undefined) return key;
   }
   return "unknown";
@@ -38,6 +38,12 @@ export function backendDetail(res: K8sResource): string {
   }
   const mcp = s.mcp as Record<string, unknown> | undefined;
   if (mcp && Array.isArray(mcp.targets)) return `${mcp.targets.length} target(s)`;
+  const entMcp = s.entMcp as Record<string, unknown> | undefined;
+  if (entMcp) {
+    const count = Array.isArray(entMcp.targets) ? entMcp.targets.length : 0;
+    const mode = typeof entMcp.toolMode === "string" ? ` · ${entMcp.toolMode}` : "";
+    return `${count} target(s)${mode}`;
+  }
   const stat = s.static as Record<string, unknown> | undefined;
   if (stat) return [stat.host, stat.port].filter((v) => v !== undefined).join(":");
   const a2a = s.a2a as Record<string, unknown> | undefined;
@@ -354,6 +360,147 @@ export const RESOURCES: ResourceDescriptor[] = [
   },
 ];
 
+const ENTERPRISE_GROUP = "enterpriseagentgateway.solo.io";
+
+/** Solo enterprise companions to the agentgateway.dev kinds. */
+export const ENTERPRISE_RESOURCES: ResourceDescriptor[] = [
+  {
+    id: "ent-backends",
+    kind: "EnterpriseAgentgatewayBackend",
+    group: ENTERPRISE_GROUP,
+    version: "v1alpha1",
+    plural: "enterpriseagentgatewaybackends",
+    scope: "Namespaced",
+    crdName: "enterpriseagentgatewaybackends.enterpriseagentgateway.solo.io",
+    label: "Enterprise Backend",
+    labelPlural: "Enterprise Backends",
+    description: "Enterprise backends: entMcp tool modes plus all OSS backend types",
+    icon: "server",
+    listColumns: [
+      { id: "type", header: "Type", accessor: backendType },
+      { id: "detail", header: "Detail", mono: true, accessor: backendDetail },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${ENTERPRISE_GROUP}/v1alpha1`,
+      kind: "EnterpriseAgentgatewayBackend",
+      metadata: { name: "my-ent-backend", namespace },
+      spec: {
+        entMcp: {
+          toolMode: "Standard",
+          targets: [{ name: "my-target", static: { host: "mcp.example.com", port: 443 } }],
+        },
+      },
+    }),
+    docsUrl: "https://docs.solo.io/agentgateway/",
+  },
+  {
+    id: "ent-policies",
+    kind: "EnterpriseAgentgatewayPolicy",
+    group: ENTERPRISE_GROUP,
+    version: "v1alpha1",
+    plural: "enterpriseagentgatewaypolicies",
+    scope: "Namespaced",
+    crdName: "enterpriseagentgatewaypolicies.enterpriseagentgateway.solo.io",
+    label: "Enterprise Policy",
+    labelPlural: "Enterprise Policies",
+    description: "Enterprise policies: extAuth, rate limiting, CSRF, extProc, and more",
+    icon: "shieldCheck",
+    listColumns: [
+      { id: "targets", header: "Targets", mono: true, accessor: policyTargets },
+      { id: "sections", header: "Configures", accessor: policySections },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: `${ENTERPRISE_GROUP}/v1alpha1`,
+      kind: "EnterpriseAgentgatewayPolicy",
+      metadata: { name: "my-ent-policy", namespace },
+      spec: {
+        targetRefs: [{ group: GATEWAY_API_GROUP, kind: "Gateway", name: "my-gateway" }],
+        traffic: {},
+      },
+    }),
+    docsUrl: "https://docs.solo.io/agentgateway/",
+  },
+  {
+    id: "ent-parameters",
+    kind: "EnterpriseAgentgatewayParameters",
+    group: ENTERPRISE_GROUP,
+    version: "v1alpha1",
+    plural: "enterpriseagentgatewayparameters",
+    scope: "Namespaced",
+    crdName: "enterpriseagentgatewayparameters.enterpriseagentgateway.solo.io",
+    label: "Enterprise Parameters",
+    labelPlural: "Enterprise Parameters",
+    description: "Data plane settings plus shared extensions (extauth, ratelimiter, extCache)",
+    icon: "settings2",
+    listColumns: [
+      {
+        id: "extensions",
+        header: "Extensions",
+        accessor: (r) => {
+          const ext = spec(r).sharedExtensions as Record<string, unknown> | undefined;
+          if (!ext) return undefined;
+          return Object.keys(ext).filter((k) => ext[k] !== undefined);
+        },
+      },
+      {
+        id: "logging",
+        header: "Logging",
+        accessor: (r) => {
+          const logging = spec(r).logging as Record<string, unknown> | undefined;
+          return logging ? [logging.level, logging.format].filter(Boolean).join(" · ") : undefined;
+        },
+      },
+    ],
+    getStatus: noStatus,
+    template: (namespace) => ({
+      apiVersion: `${ENTERPRISE_GROUP}/v1alpha1`,
+      kind: "EnterpriseAgentgatewayParameters",
+      metadata: { name: "ent-agentgateway-params", namespace },
+      spec: { logging: { level: "info", format: "json" } },
+    }),
+    docsUrl: "https://docs.solo.io/agentgateway/",
+  },
+  {
+    id: "ent-listenersets",
+    kind: "EnterpriseListenerSet",
+    group: "enterprise.solo.io",
+    version: "v1alpha1",
+    plural: "enterpriselistenersets",
+    scope: "Namespaced",
+    crdName: "enterpriselistenersets.enterprise.solo.io",
+    label: "Listener Set",
+    labelPlural: "Listener Sets",
+    description: "Enterprise listener sets attached to gateways",
+    icon: "layers",
+    listColumns: [
+      {
+        id: "listeners",
+        header: "Listeners",
+        accessor: (r) => {
+          const listeners = spec(r).listeners;
+          if (!Array.isArray(listeners)) return undefined;
+          return listeners.map((l) => {
+            const x = l as Record<string, unknown>;
+            return `${x.protocol}:${x.port}`;
+          });
+        },
+      },
+    ],
+    getStatus: summarizeStatus,
+    template: (namespace) => ({
+      apiVersion: "enterprise.solo.io/v1alpha1",
+      kind: "EnterpriseListenerSet",
+      metadata: { name: "my-listener-set", namespace },
+      spec: {
+        listeners: [{ name: "http", protocol: "HTTP", port: 8080 }],
+      },
+    }),
+    docsUrl: "https://docs.solo.io/agentgateway/",
+  },
+];
+
 /** Read-only kinds used to populate pickers and reference panels. */
 export const READONLY_RESOURCES: ResourceDescriptor[] = [
   {
@@ -409,7 +556,7 @@ export const READONLY_RESOURCES: ResourceDescriptor[] = [
   },
 ];
 
-export const ALL_RESOURCES = [...RESOURCES, ...READONLY_RESOURCES];
+export const ALL_RESOURCES = [...RESOURCES, ...ENTERPRISE_RESOURCES, ...READONLY_RESOURCES];
 
 export function getResource(id: string): ResourceDescriptor | undefined {
   return ALL_RESOURCES.find((r) => r.id === id);

@@ -38,6 +38,18 @@ export function extractConditions(res: K8sResource): ScopedCondition[] {
     }
   }
 
+  // Gateway API PolicyStatus (AgentgatewayPolicy and enterprise policies).
+  if (Array.isArray(status.ancestors)) {
+    for (const ancestor of status.ancestors as Array<Record<string, unknown>>) {
+      const ref = (ancestor?.ancestorRef ?? {}) as Record<string, unknown>;
+      const name =
+        [ref.namespace, ref.name].filter((p) => typeof p === "string").join("/") || "?";
+      for (const c of asConditions(ancestor?.conditions)) {
+        out.push({ ...c, scope: `ancestor/${name}` });
+      }
+    }
+  }
+
   return out;
 }
 

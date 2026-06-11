@@ -44,6 +44,25 @@ export function ClusterUnreachable({ error }: { error?: string }) {
   );
 }
 
+/** The CRD for this kind isn't installed in the connected cluster. */
+export function CrdNotInstalled({ desc }: { desc: ResourceDescriptor }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-4 rounded-lg border border-dashed py-24 text-center">
+      <div className="space-y-1">
+        <p className="font-medium">
+          {desc.kind} is not available in this cluster
+        </p>
+        <p className="mx-auto max-w-md text-sm text-muted-foreground">
+          The CRD <span className="k8s-id text-foreground">{desc.crdName}</span> is not installed.
+          {desc.group.endsWith("solo.io")
+            ? " Install the Solo enterprise agentgateway charts to manage this kind."
+            : " Install the matching CRDs to manage this kind."}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function ResourceError({ error }: { error: ParsedK8sError }) {
   return (
     <div className="rounded-lg border border-destructive/40 bg-destructive/5 px-4 py-3 text-sm">

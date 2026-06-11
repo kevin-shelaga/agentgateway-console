@@ -36,6 +36,14 @@ const loaders: Record<string, () => BundledCrdSchema> = {
     require("./bundled/referencegrants.gateway.networking.k8s.io.json"),
   "tlsroutes.gateway.networking.k8s.io": () =>
     require("./bundled/tlsroutes.gateway.networking.k8s.io.json"),
+  "enterpriseagentgatewaybackends.enterpriseagentgateway.solo.io": () =>
+    require("./bundled/enterpriseagentgatewaybackends.enterpriseagentgateway.solo.io.json"),
+  "enterpriseagentgatewaypolicies.enterpriseagentgateway.solo.io": () =>
+    require("./bundled/enterpriseagentgatewaypolicies.enterpriseagentgateway.solo.io.json"),
+  "enterpriseagentgatewayparameters.enterpriseagentgateway.solo.io": () =>
+    require("./bundled/enterpriseagentgatewayparameters.enterpriseagentgateway.solo.io.json"),
+  "enterpriselistenersets.enterprise.solo.io": () =>
+    require("./bundled/enterpriselistenersets.enterprise.solo.io.json"),
 };
 
 export function getBundledSchema(crdName: string): BundledCrdSchema | null {

@@ -20,10 +20,11 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import { RESOURCES } from "@/lib/registry";
+import { ALL_RESOURCES } from "@/lib/registry";
 
 const GATEWAY_API_IDS = ["gatewayclasses", "gateways", "httproutes", "grpcroutes"];
 const AGENTGATEWAY_IDS = ["backends", "policies", "parameters"];
+const ENTERPRISE_IDS = ["ent-backends", "ent-policies", "ent-parameters", "ent-listenersets"];
 
 function NavGroup({
   label,
@@ -43,7 +44,7 @@ function NavGroup({
       <SidebarGroupContent>
         <SidebarMenu>
           {ids.map((id) => {
-            const desc = RESOURCES.find((r) => r.id === id)!;
+            const desc = ALL_RESOURCES.find((r) => r.id === id)!;
             const Icon = resourceIcon(desc.icon);
             const href = `/resources/${desc.id}`;
             const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -124,6 +125,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </NavGroup>
+        <NavGroup label="Enterprise" ids={ENTERPRISE_IDS} />
       </SidebarContent>
       <SidebarFooter>
         <div className="flex items-center gap-1.5 group-data-[collapsible=icon]:flex-col">

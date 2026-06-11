@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ALL_RESOURCES,
+  ENTERPRISE_RESOURCES,
   backendDetail,
   backendType,
   getResource,
@@ -13,7 +14,7 @@ import { aiBackend, gateway, httpRoute, mcpBackend, policy, staticBackend } from
 import type { K8sResource } from "./types";
 
 describe("registry shape", () => {
-  it("manages exactly the seven writable kinds plus three read-only", () => {
+  it("manages the seven OSS kinds, four enterprise kinds, plus three read-only", () => {
     expect(RESOURCES.map((r) => r.kind).sort()).toEqual([
       "AgentgatewayBackend",
       "AgentgatewayParameters",
@@ -23,8 +24,14 @@ describe("registry shape", () => {
       "GatewayClass",
       "HTTPRoute",
     ]);
+    expect(ENTERPRISE_RESOURCES.map((r) => r.kind).sort()).toEqual([
+      "EnterpriseAgentgatewayBackend",
+      "EnterpriseAgentgatewayParameters",
+      "EnterpriseAgentgatewayPolicy",
+      "EnterpriseListenerSet",
+    ]);
     expect(READONLY_RESOURCES.every((r) => r.readOnly)).toBe(true);
-    expect(ALL_RESOURCES).toHaveLength(10);
+    expect(ALL_RESOURCES).toHaveLength(14);
   });
 
   it("every descriptor has a unique id and a valid template", () => {

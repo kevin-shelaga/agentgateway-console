@@ -1,0 +1,1572 @@
+{
+  "name": "enterpriseagentgatewayparameters.enterpriseagentgateway.solo.io",
+  "group": "enterpriseagentgateway.solo.io",
+  "kind": "EnterpriseAgentgatewayParameters",
+  "plural": "enterpriseagentgatewayparameters",
+  "scope": "Namespaced",
+  "versions": {
+    "v1alpha1": {
+      "properties": {
+        "apiVersion": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "metadata": {
+          "type": "object"
+        },
+        "spec": {
+          "properties": {
+            "ca": {
+              "properties": {
+                "additionalTrustDomains": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "address": {
+                  "type": "string"
+                },
+                "trustDomain": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "deployment": {
+              "properties": {
+                "metadata": {
+                  "properties": {
+                    "annotations": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "labels": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "spec": {
+                  "type": "object",
+                  "x-kubernetes-preserve-unknown-fields": true
+                }
+              },
+              "type": "object"
+            },
+            "env": {
+              "items": {
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "value": {
+                    "type": "string"
+                  },
+                  "valueFrom": {
+                    "properties": {
+                      "configMapKeyRef": {
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "default": "",
+                            "type": "string"
+                          },
+                          "optional": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "key"
+                        ],
+                        "type": "object",
+                        "x-kubernetes-map-type": "atomic"
+                      },
+                      "fieldRef": {
+                        "properties": {
+                          "apiVersion": {
+                            "type": "string"
+                          },
+                          "fieldPath": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "fieldPath"
+                        ],
+                        "type": "object",
+                        "x-kubernetes-map-type": "atomic"
+                      },
+                      "fileKeyRef": {
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "optional": {
+                            "default": false,
+                            "type": "boolean"
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "volumeName": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "path",
+                          "volumeName"
+                        ],
+                        "type": "object",
+                        "x-kubernetes-map-type": "atomic"
+                      },
+                      "resourceFieldRef": {
+                        "properties": {
+                          "containerName": {
+                            "type": "string"
+                          },
+                          "divisor": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                            "x-kubernetes-int-or-string": true
+                          },
+                          "resource": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "resource"
+                        ],
+                        "type": "object",
+                        "x-kubernetes-map-type": "atomic"
+                      },
+                      "secretKeyRef": {
+                        "properties": {
+                          "key": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "default": "",
+                            "type": "string"
+                          },
+                          "optional": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "key"
+                        ],
+                        "type": "object",
+                        "x-kubernetes-map-type": "atomic"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": "array"
+            },
+            "horizontalPodAutoscaler": {
+              "properties": {
+                "metadata": {
+                  "properties": {
+                    "annotations": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "labels": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "spec": {
+                  "type": "object",
+                  "x-kubernetes-preserve-unknown-fields": true
+                }
+              },
+              "type": "object"
+            },
+            "image": {
+              "properties": {
+                "digest": {
+                  "type": "string"
+                },
+                "pullPolicy": {
+                  "type": "string"
+                },
+                "registry": {
+                  "type": "string"
+                },
+                "repository": {
+                  "type": "string"
+                },
+                "tag": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "istio": {
+              "properties": {
+                "additionalTrustDomains": {
+                  "items": {
+                    "type": "string"
+                  },
+                  "type": "array"
+                },
+                "caAddress": {
+                  "type": "string"
+                },
+                "clusterId": {
+                  "type": "string"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "network": {
+                  "type": "string"
+                },
+                "trustDomain": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "istioClusterId": {
+              "type": "string"
+            },
+            "istioNetwork": {
+              "type": "string"
+            },
+            "logging": {
+              "properties": {
+                "format": {
+                  "enum": [
+                    "json",
+                    "text"
+                  ],
+                  "type": "string"
+                },
+                "level": {
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            "podDisruptionBudget": {
+              "properties": {
+                "metadata": {
+                  "properties": {
+                    "annotations": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "labels": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "spec": {
+                  "type": "object",
+                  "x-kubernetes-preserve-unknown-fields": true
+                }
+              },
+              "type": "object"
+            },
+            "rawConfig": {
+              "type": "object",
+              "x-kubernetes-preserve-unknown-fields": true
+            },
+            "resources": {
+              "properties": {
+                "claims": {
+                  "items": {
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "request": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "name"
+                    ],
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "x-kubernetes-list-map-keys": [
+                    "name"
+                  ],
+                  "x-kubernetes-list-type": "map"
+                },
+                "limits": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                    "x-kubernetes-int-or-string": true
+                  },
+                  "type": "object"
+                },
+                "requests": {
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                    "x-kubernetes-int-or-string": true
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "service": {
+              "properties": {
+                "metadata": {
+                  "properties": {
+                    "annotations": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "labels": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "spec": {
+                  "type": "object",
+                  "x-kubernetes-preserve-unknown-fields": true
+                }
+              },
+              "type": "object"
+            },
+            "serviceAccount": {
+              "properties": {
+                "metadata": {
+                  "properties": {
+                    "annotations": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    },
+                    "labels": {
+                      "additionalProperties": {
+                        "type": "string"
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "spec": {
+                  "type": "object",
+                  "x-kubernetes-preserve-unknown-fields": true
+                }
+              },
+              "type": "object"
+            },
+            "sharedExtensions": {
+              "properties": {
+                "extCache": {
+                  "properties": {
+                    "deployment": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "env": {
+                      "items": {
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "valueFrom": {
+                            "properties": {
+                              "configMapKeyRef": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "default": "",
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "fieldRef": {
+                                "properties": {
+                                  "apiVersion": {
+                                    "type": "string"
+                                  },
+                                  "fieldPath": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "fieldPath"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "fileKeyRef": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "volumeName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "path",
+                                  "volumeName"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "resourceFieldRef": {
+                                "properties": {
+                                  "containerName": {
+                                    "type": "string"
+                                  },
+                                  "divisor": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "type": "string"
+                                      }
+                                    ],
+                                    "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                                    "x-kubernetes-int-or-string": true
+                                  },
+                                  "resource": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "resource"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "secretKeyRef": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "default": "",
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "horizontalPodAutoscaler": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "image": {
+                      "properties": {
+                        "digest": {
+                          "type": "string"
+                        },
+                        "pullPolicy": {
+                          "type": "string"
+                        },
+                        "registry": {
+                          "type": "string"
+                        },
+                        "repository": {
+                          "type": "string"
+                        },
+                        "tag": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "podDisruptionBudget": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "resources": {
+                      "properties": {
+                        "claims": {
+                          "items": {
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "request": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array",
+                          "x-kubernetes-list-map-keys": [
+                            "name"
+                          ],
+                          "x-kubernetes-list-type": "map"
+                        },
+                        "limits": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                            "x-kubernetes-int-or-string": true
+                          },
+                          "type": "object"
+                        },
+                        "requests": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                            "x-kubernetes-int-or-string": true
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "service": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "serviceAccount": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "verticalPodAutoscaler": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "extauth": {
+                  "properties": {
+                    "deployment": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "env": {
+                      "items": {
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "valueFrom": {
+                            "properties": {
+                              "configMapKeyRef": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "default": "",
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "fieldRef": {
+                                "properties": {
+                                  "apiVersion": {
+                                    "type": "string"
+                                  },
+                                  "fieldPath": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "fieldPath"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "fileKeyRef": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "volumeName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "path",
+                                  "volumeName"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "resourceFieldRef": {
+                                "properties": {
+                                  "containerName": {
+                                    "type": "string"
+                                  },
+                                  "divisor": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "type": "string"
+                                      }
+                                    ],
+                                    "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                                    "x-kubernetes-int-or-string": true
+                                  },
+                                  "resource": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "resource"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "secretKeyRef": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "default": "",
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "horizontalPodAutoscaler": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "image": {
+                      "properties": {
+                        "digest": {
+                          "type": "string"
+                        },
+                        "pullPolicy": {
+                          "type": "string"
+                        },
+                        "registry": {
+                          "type": "string"
+                        },
+                        "repository": {
+                          "type": "string"
+                        },
+                        "tag": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "podDisruptionBudget": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "resources": {
+                      "properties": {
+                        "claims": {
+                          "items": {
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "request": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array",
+                          "x-kubernetes-list-map-keys": [
+                            "name"
+                          ],
+                          "x-kubernetes-list-type": "map"
+                        },
+                        "limits": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                            "x-kubernetes-int-or-string": true
+                          },
+                          "type": "object"
+                        },
+                        "requests": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                            "x-kubernetes-int-or-string": true
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "service": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "serviceAccount": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "verticalPodAutoscaler": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                },
+                "ratelimiter": {
+                  "properties": {
+                    "deployment": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "env": {
+                      "items": {
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "value": {
+                            "type": "string"
+                          },
+                          "valueFrom": {
+                            "properties": {
+                              "configMapKeyRef": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "default": "",
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "fieldRef": {
+                                "properties": {
+                                  "apiVersion": {
+                                    "type": "string"
+                                  },
+                                  "fieldPath": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "fieldPath"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "fileKeyRef": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "default": false,
+                                    "type": "boolean"
+                                  },
+                                  "path": {
+                                    "type": "string"
+                                  },
+                                  "volumeName": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "key",
+                                  "path",
+                                  "volumeName"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "resourceFieldRef": {
+                                "properties": {
+                                  "containerName": {
+                                    "type": "string"
+                                  },
+                                  "divisor": {
+                                    "anyOf": [
+                                      {
+                                        "type": "integer"
+                                      },
+                                      {
+                                        "type": "string"
+                                      }
+                                    ],
+                                    "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                                    "x-kubernetes-int-or-string": true
+                                  },
+                                  "resource": {
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "resource"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              },
+                              "secretKeyRef": {
+                                "properties": {
+                                  "key": {
+                                    "type": "string"
+                                  },
+                                  "name": {
+                                    "default": "",
+                                    "type": "string"
+                                  },
+                                  "optional": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "key"
+                                ],
+                                "type": "object",
+                                "x-kubernetes-map-type": "atomic"
+                              }
+                            },
+                            "type": "object"
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "horizontalPodAutoscaler": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "image": {
+                      "properties": {
+                        "digest": {
+                          "type": "string"
+                        },
+                        "pullPolicy": {
+                          "type": "string"
+                        },
+                        "registry": {
+                          "type": "string"
+                        },
+                        "repository": {
+                          "type": "string"
+                        },
+                        "tag": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "podDisruptionBudget": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "resources": {
+                      "properties": {
+                        "claims": {
+                          "items": {
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "request": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "name"
+                            ],
+                            "type": "object"
+                          },
+                          "type": "array",
+                          "x-kubernetes-list-map-keys": [
+                            "name"
+                          ],
+                          "x-kubernetes-list-type": "map"
+                        },
+                        "limits": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                            "x-kubernetes-int-or-string": true
+                          },
+                          "type": "object"
+                        },
+                        "requests": {
+                          "additionalProperties": {
+                            "anyOf": [
+                              {
+                                "type": "integer"
+                              },
+                              {
+                                "type": "string"
+                              }
+                            ],
+                            "pattern": "^(\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))(([KMGTPE]i)|[numkMGTPE]|([eE](\\+|-)?(([0-9]+(\\.[0-9]*)?)|(\\.[0-9]+))))?$",
+                            "x-kubernetes-int-or-string": true
+                          },
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "service": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "serviceAccount": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "verticalPodAutoscaler": {
+                      "properties": {
+                        "metadata": {
+                          "properties": {
+                            "annotations": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            },
+                            "labels": {
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "type": "object"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "spec": {
+                          "type": "object",
+                          "x-kubernetes-preserve-unknown-fields": true
+                        }
+                      },
+                      "type": "object"
+                    }
+                  },
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "shutdown": {
+              "properties": {
+                "max": {
+                  "format": "int64",
+                  "maximum": 31536000,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "min": {
+                  "format": "int64",
+                  "maximum": 31536000,
+                  "minimum": 0,
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "max",
+                "min"
+              ],
+              "type": "object",
+              "x-kubernetes-validations": [
+                {
+                  "message": "The 'min' value must be less than or equal to the 'max' value.",
+                  "rule": "self.min <= self.max"
+                }
+              ]
+            },
+            "workloadClaims": {
+              "properties": {
+                "enabled": {
+                  "type": "boolean"
+                }
+              },
+              "type": "object"
+            }
+          },
+          "type": "object"
+        },
+        "status": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "spec"
+      ],
+      "type": "object"
+    }
+  }
+}

@@ -9,6 +9,10 @@
  *  - Gateway API standard CRDs: downloaded from the gateway-api GitHub release
  *    matching the version pinned in ../agentgateway/go.mod (sigs.k8s.io/gateway-api),
  *    falling back to the latest release if that asset is missing.
+ *  - Enterprise CRDs (optional): ../agentgateway-enterprise generated charts —
+ *    only the enterprise groups; the agentgateway.dev copies it ships are
+ *    skipped so the OSS repo stays their source of truth. Silently skipped
+ *    when the enterprise repo isn't checked out.
  */
 import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -102,6 +106,34 @@ async function readAgentgatewayCrds() {
   return crds;
 }
 
+const enterpriseRepo = path.resolve(repoRoot, "..", "agentgateway-enterprise");
+const ENTERPRISE_GROUPS = new Set(["enterpriseagentgateway.solo.io", "enterprise.solo.io"]);
+const enterpriseTemplateDirs = [
+  "ent-controller/install/generated/enterprise-agentgateway-crds/templates",
+  "ent-controller/install/generated/enterprise-solo-crds/templates",
+];
+
+async function readEnterpriseCrds() {
+  const crds = [];
+  for (const dir of enterpriseTemplateDirs) {
+    const full = path.join(enterpriseRepo, dir);
+    let entries;
+    try {
+      entries = await readdir(full);
+    } catch {
+      console.warn(`enterprise repo not found at ${full} — skipping enterprise CRDs`);
+      return [];
+    }
+    for (const entry of entries.filter((f) => /\.ya?ml$/.test(f)).sort()) {
+      const text = await readFile(path.join(full, entry), "utf8");
+      for (const crd of parseCrdDocs(text, entry)) {
+        if (ENTERPRISE_GROUPS.has(crd.spec?.group)) crds.push(crd);
+      }
+    }
+  }
+  return crds;
+}
+
 async function detectGatewayApiVersion() {
   try {
     const gomod = await readFile(path.join(agentgatewayRepo, "go.mod"), "utf8");
@@ -141,7 +173,11 @@ async function fetchGatewayApiCrds() {
 }
 
 async function main() {
-  const crds = [...(await readAgentgatewayCrds()), ...(await fetchGatewayApiCrds())];
+  const crds = [
+    ...(await readAgentgatewayCrds()),
+    ...(await fetchGatewayApiCrds()),
+    ...(await readEnterpriseCrds()),
+  ];
   await mkdir(outDir, { recursive: true });
 
   const written = [];

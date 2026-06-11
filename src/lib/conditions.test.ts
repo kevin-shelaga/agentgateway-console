@@ -55,6 +55,21 @@ describe("extractConditions", () => {
     expect(conditions[0].scope).toBe("parent/infra/gateway");
   });
 
+  it("reads policy ancestor conditions with scope (Gateway API PolicyStatus)", () => {
+    const conditions = extractConditions(
+      res({
+        ancestors: [
+          {
+            ancestorRef: { kind: "Gateway", name: "gw", namespace: "infra" },
+            conditions: [{ type: "Accepted", status: "True" }],
+          },
+        ],
+      }),
+    );
+    expect(conditions).toHaveLength(1);
+    expect(conditions[0].scope).toBe("ancestor/infra/gw");
+  });
+
   it("returns empty for missing status", () => {
     expect(extractConditions(res(undefined))).toEqual([]);
   });

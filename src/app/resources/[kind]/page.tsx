@@ -8,6 +8,7 @@ import { resourceIcon } from "@/components/icon-map";
 import { NamespaceFilter } from "@/components/namespace-filter";
 import {
   ClusterUnreachable,
+  CrdNotInstalled,
   EmptyState,
   PageHeader,
   ResourceError,
@@ -100,6 +101,8 @@ export default function ResourceListPage({
         <TableSkeleton />
       ) : unreachable ? (
         <ClusterUnreachable error={apiError.message} />
+      ) : apiError?.status === 404 ? (
+        <CrdNotInstalled desc={desc} />
       ) : apiError ? (
         <ResourceError error={apiError} />
       ) : items.length === 0 ? (

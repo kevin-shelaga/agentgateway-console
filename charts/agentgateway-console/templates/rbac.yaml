@@ -20,6 +20,17 @@ rules:
       - agentgatewaypolicies
       - agentgatewayparameters
     verbs: ["get", "list", "watch", "create", "update", "delete"]
+  # Solo enterprise companions (no-ops on clusters without the CRDs).
+  - apiGroups: ["enterpriseagentgateway.solo.io"]
+    resources:
+      - enterpriseagentgatewaybackends
+      - enterpriseagentgatewaypolicies
+      - enterpriseagentgatewayparameters
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
+  - apiGroups: ["enterprise.solo.io"]
+    resources:
+      - enterpriselistenersets
+    verbs: ["get", "list", "watch", "create", "update", "delete"]
   # Read-only reference data for pickers (the BFF strips secret payloads,
   # but least-privilege still applies — list/get only, no watch).
   - apiGroups: [""]
