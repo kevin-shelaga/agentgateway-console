@@ -120,3 +120,35 @@ spec:
       backendRefs:
         - name: mockllm
           port: 9234
+---
+# MCP backend: agentgateway terminates MCP and proxies to the mock server
+# (StreamableHTTP target, default path /mcp) — powers the playground MCP tab.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayBackend
+metadata:
+  name: mcp-tools
+  namespace: default
+spec:
+  mcp:
+    targets:
+      - name: mock
+        static:
+          host: mockmcp.default.svc.cluster.local
+          port: 3001
+          protocol: StreamableHTTP
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: mcp
+  namespace: default
+spec:
+  parentRefs:
+    - name: demo-gateway
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /mcp }
+      backendRefs:
+        - group: agentgateway.dev
+          kind: AgentgatewayBackend
+          name: mcp-tools

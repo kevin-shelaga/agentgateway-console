@@ -1,0 +1,166 @@
+# Self-contained MCP server: stdlib-only Python speaking MCP Streamable HTTP
+# (JSON responses) with a handful of demo tools — no custom images.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mockmcp-script
+  namespace: default
+data:
+  server.py: |
+    import json, random
+    from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+    TOOLS = [
+        {
+            "name": "echo",
+            "description": "Echo a message back, gateway-certified.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"message": {"type": "string", "description": "Text to echo"}},
+                "required": ["message"],
+            },
+        },
+        {
+            "name": "add",
+            "description": "Add two numbers together.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"a": {"type": "number"}, "b": {"type": "number"}},
+                "required": ["a", "b"],
+            },
+        },
+        {
+            "name": "get_weather",
+            "description": "Get the (entirely fabricated) weather for a city.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"city": {"type": "string", "description": "City name"}},
+                "required": ["city"],
+            },
+        },
+        {
+            "name": "roll_dice",
+            "description": "Roll a die with the given number of sides.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {"sides": {"type": "integer", "minimum": 2, "default": 6}},
+            },
+        },
+    ]
+
+    def call_tool(name, args):
+        if name == "echo":
+            return "echo: %s" % args.get("message", "")
+        if name == "add":
+            total = args.get("a", 0) + args.get("b", 0)
+            return "%s + %s = %s" % (args.get("a", 0), args.get("b", 0), total)
+        if name == "get_weather":
+            cond = random.choice(["sunny", "cloudy", "raining YAML", "foggy", "windy"])
+            return "Weather in %s: %d°C and %s" % (args.get("city", "?"), random.randint(-5, 35), cond)
+        if name == "roll_dice":
+            sides = int(args.get("sides", 6))
+            return "rolled a %d (d%d)" % (random.randint(1, max(2, sides)), sides)
+        return None
+
+    class Handler(BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            print("%s %s" % (self.command, self.path), flush=True)
+
+        def _send(self, code, body=None, extra=None):
+            data = json.dumps(body).encode() if body is not None else b""
+            self.send_response(code)
+            if body is not None:
+                self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(data)))
+            for key, value in (extra or {}).items():
+                self.send_header(key, value)
+            self.end_headers()
+            self.wfile.write(data)
+
+        def do_GET(self):
+            if self.path == "/healthz":
+                self._send(200, {"ok": True})
+            else:
+                self._send(405)  # no server-initiated SSE stream
+
+        def do_DELETE(self):
+            self._send(200)
+
+        def do_POST(self):
+            length = int(self.headers.get("Content-Length", 0))
+            try:
+                msg = json.loads(self.rfile.read(length))
+            except Exception:
+                self._send(400, {"jsonrpc": "2.0", "id": None,
+                                 "error": {"code": -32700, "message": "parse error"}})
+                return
+            method, msg_id = msg.get("method", ""), msg.get("id")
+            if msg_id is None:  # notification (e.g. notifications/initialized)
+                self._send(202)
+                return
+            if method == "initialize":
+                proto = (msg.get("params") or {}).get("protocolVersion", "2025-03-26")
+                self._send(200, {"jsonrpc": "2.0", "id": msg_id, "result": {
+                    "protocolVersion": proto,
+                    "capabilities": {"tools": {"listChanged": False}},
+                    "serverInfo": {"name": "mockmcp", "version": "0.1.0"},
+                }}, extra={"Mcp-Session-Id": "mock-%08x" % random.getrandbits(32)})
+            elif method == "ping":
+                self._send(200, {"jsonrpc": "2.0", "id": msg_id, "result": {}})
+            elif method == "tools/list":
+                self._send(200, {"jsonrpc": "2.0", "id": msg_id, "result": {"tools": TOOLS}})
+            elif method == "tools/call":
+                params = msg.get("params") or {}
+                text = call_tool(params.get("name", ""), params.get("arguments") or {})
+                if text is None:
+                    self._send(200, {"jsonrpc": "2.0", "id": msg_id, "result": {
+                        "content": [{"type": "text", "text": "unknown tool"}], "isError": True}})
+                else:
+                    self._send(200, {"jsonrpc": "2.0", "id": msg_id, "result": {
+                        "content": [{"type": "text", "text": text}], "isError": False}})
+            else:
+                self._send(200, {"jsonrpc": "2.0", "id": msg_id,
+                                 "error": {"code": -32601, "message": "method not found: %s" % method}})
+
+    ThreadingHTTPServer(("0.0.0.0", 3001), Handler).serve_forever()
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mockmcp
+  namespace: default
+  labels: { app: mockmcp }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: mockmcp }
+  template:
+    metadata:
+      labels: { app: mockmcp }
+    spec:
+      containers:
+        - name: mockmcp
+          image: python:3.12-alpine
+          command: ["python", "/app/server.py"]
+          ports:
+            - containerPort: 3001
+          volumeMounts:
+            - name: script
+              mountPath: /app
+          readinessProbe:
+            httpGet: { path: /healthz, port: 3001 }
+            initialDelaySeconds: 2
+      volumes:
+        - name: script
+          configMap: { name: mockmcp-script }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mockmcp
+  namespace: default
+spec:
+  selector: { app: mockmcp }
+  ports:
+    - port: 3001
+      targetPort: 3001
