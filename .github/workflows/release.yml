@@ -163,8 +163,47 @@ jobs:
 
           npm publish "./dist/agentgateway-console-${VERSION}.tgz" --ignore-scripts --provenance --access public
 
+  helm-release:
+    needs: validate
+    if: needs.validate.outputs.should_publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    env:
+      VERSION: ${{ needs.validate.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Package chart
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # appVersion carries the v prefix so the chart's default image tag
+          # matches the published container tags (vX.Y.Z).
+          helm package charts/agentgateway-console             --version "${VERSION}"             --app-version "v${VERSION}"             --destination dist
+          test -f "dist/agentgateway-console-${VERSION}.tgz"
+
+      - name: Push chart to ghcr (OCI)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          echo "${GH_TOKEN}" | helm registry login ghcr.io --username "${GITHUB_ACTOR}" --password-stdin
+          helm push "dist/agentgateway-console-${VERSION}.tgz" "oci://ghcr.io/${GITHUB_REPOSITORY_OWNER}/charts"
+
+      - name: Upload chart artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: helm-chart-${{ needs.validate.outputs.version }}
+          path: dist/agentgateway-console-${{ needs.validate.outputs.version }}.tgz
+          if-no-files-found: error
+          retention-days: 7
+
   github-release:
-    needs: [validate, publish]
+    needs: [validate, publish, helm-release]
     # Run for tag-driven releases even when npm publish was skipped because
     # the version already exists; never run if validation or publish failed.
     if: >-
@@ -172,7 +211,8 @@ jobs:
       needs.validate.result == 'success' &&
       needs.validate.outputs.should_publish == 'true' &&
       needs.publish.result != 'failure' &&
-      needs.publish.result != 'cancelled'
+      needs.publish.result != 'cancelled' &&
+      needs.helm-release.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -187,15 +227,30 @@ jobs:
           name: npm-package-${{ needs.validate.outputs.version }}
           path: dist
 
+      - name: Download chart artifact
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: helm-chart-${{ needs.validate.outputs.version }}
+          path: chart-dist
+
       - name: Generate checksums
-        working-directory: dist
-        run: sha256sum "agentgateway-console-${VERSION}.tgz" > "agentgateway-console-${VERSION}.sha256"
+        run: |
+          set -euo pipefail
+          mv "chart-dist/agentgateway-console-${VERSION}.tgz" "dist/agentgateway-console-chart-${VERSION}.tgz"
+          cd dist
+          sha256sum "agentgateway-console-${VERSION}.tgz" > "agentgateway-console-${VERSION}.sha256"
+          sha256sum "agentgateway-console-chart-${VERSION}.tgz" > "agentgateway-console-chart-${VERSION}.sha256"
 
       - name: Create or update GitHub release with assets
         run: |
           set -euo pipefail
           TAG="v${VERSION}"
-          ASSETS=(dist/agentgateway-console-"${VERSION}".tgz dist/agentgateway-console-"${VERSION}".sha256)
+          ASSETS=(
+            dist/agentgateway-console-"${VERSION}".tgz
+            dist/agentgateway-console-"${VERSION}".sha256
+            dist/agentgateway-console-chart-"${VERSION}".tgz
+            dist/agentgateway-console-chart-"${VERSION}".sha256
+          )
 
           if gh release view "$TAG" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG" "${ASSETS[@]}" --clobber -R "$GITHUB_REPOSITORY"
