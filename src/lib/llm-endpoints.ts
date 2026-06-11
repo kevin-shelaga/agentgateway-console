@@ -2,7 +2,11 @@ import { getReferences } from "./references";
 import type { K8sResource } from "./types";
 
 export interface LlmEndpoint {
-  /** Base URL of the gateway listener, e.g. "https://4.229.185.215". */
+  /**
+   * Base URL of the gateway listener, e.g. "https://4.229.185.215" — or a
+   * "svc://ns/name:port" URL when the gateway has no published address (the
+   * BFF then reaches it through the Kubernetes API-server proxy).
+   */
   url: string;
   /** Route hostname the gateway matches on (sent as Host header), if any. */
   hostname?: string;
@@ -10,6 +14,8 @@ export interface LlmEndpoint {
   pathPrefix: string;
   gateway: string;
   route: string;
+  /** True when the URL goes through the API-server service proxy. */
+  viaApiServer?: boolean;
 }
 
 function nsName(res: K8sResource): string {
@@ -61,7 +67,6 @@ export function resolveLlmEndpoints(
       const address = addresses.find((a) => typeof a.value === "string")?.value as
         | string
         | undefined;
-      if (!address) continue;
 
       const listeners = Array.isArray(gw.spec?.listeners)
         ? (gw.spec!.listeners as Array<Record<string, unknown>>)
@@ -71,6 +76,23 @@ export function resolveLlmEndpoints(
         if (protocol !== "HTTP" && protocol !== "HTTPS") continue;
         const scheme = protocol === "HTTPS" ? "https" : "http";
         const port = typeof listener.port === "number" ? listener.port : undefined;
+
+        if (!address) {
+          // No published address (kind, no LoadBalancer provider): fall back
+          // to the gateway's Service (named after the Gateway) through the
+          // API-server proxy. HTTP only — the proxy terminates the hop.
+          if (protocol !== "HTTP" || port === undefined) continue;
+          endpoints.push({
+            url: `svc://${gw.metadata.namespace}/${gw.metadata.name}:${port}`,
+            hostname,
+            pathPrefix,
+            gateway: nsName(gw),
+            route: nsName(route),
+            viaApiServer: true,
+          });
+          continue;
+        }
+
         const defaultPort = scheme === "https" ? 443 : 80;
         const url =
           port === undefined || port === defaultPort
@@ -81,7 +103,8 @@ export function resolveLlmEndpoints(
     }
   }
 
-  return endpoints;
+  // Direct addresses first; API-server-proxy fallbacks are the last resort.
+  return endpoints.sort((a, b) => Number(!!a.viaApiServer) - Number(!!b.viaApiServer));
 }
 
 /** Model preconfigured on the backend's AI provider, if any. */

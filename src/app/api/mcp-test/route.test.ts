@@ -57,6 +57,17 @@ describe("POST /api/mcp-test", () => {
     expect((await POST(request({ url: "http://gw/mcp", action: "callTool" }))).status).toBe(403);
   });
 
+  it("rejects gateway-bound Authorization headers on svc:// urls", async () => {
+    const res = await POST(
+      request({
+        url: "svc://default/demo-gateway:80/mcp",
+        action: "listTools",
+        authHeader: { name: "Authorization", value: "Bearer sk" },
+      }),
+    );
+    expect(res.status).toBe(403);
+  });
+
   it("connects with Host + auth headers and returns the tool list with latency", async () => {
     mocks.listTools.mockResolvedValue({
       tools: [

@@ -211,6 +211,14 @@ export function McpPanel() {
               placeholder="https://<gateway-address>/mcp"
               className="h-9 font-mono text-xs"
             />
+            {url.startsWith("svc://") && (
+              <p className="text-xs text-muted-foreground">
+                This gateway has no published address, so the call is relayed through the
+                Kubernetes API-server proxy. Note: an <code className="k8s-id">Authorization</code>{" "}
+                auth header can&apos;t pass through it — pick a different header name if your
+                gateway needs one.
+              </p>
+            )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">

@@ -1,5 +1,12 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const serviceProxyTarget = vi.fn();
+vi.mock("@/lib/k8s/service-proxy", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/k8s/service-proxy")>()),
+  serviceProxyTarget: (...args: unknown[]) => serviceProxyTarget(...args),
+}));
+
 import { POST } from "./route";
 
 function request(body: unknown): NextRequest {
@@ -10,7 +17,10 @@ function request(body: unknown): NextRequest {
   });
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  serviceProxyTarget.mockReset();
+});
 
 describe("POST /api/llm-test", () => {
   it("rejects non-JSON bodies and non-http(s) urls", async () => {
@@ -65,6 +75,58 @@ describe("POST /api/llm-test", () => {
     expect(payload.ok).toBe(false);
     expect(payload.status).toBe(503);
     expect(payload.body).toBe("plain error");
+  });
+
+  it("relays svc:// urls through the API-server proxy with kubeconfig auth", async () => {
+    serviceProxyTarget.mockResolvedValue({
+      url: "https://10.0.0.1:6443/api/v1/namespaces/default/services/demo-gateway:80/proxy/v1/chat/completions",
+      headers: { Authorization: "Bearer kube-token" },
+      dispatcher: {},
+    });
+    const upstream = vi.fn(async () =>
+      new Response(JSON.stringify({ ok: true }), {
+        status: 200,
+        headers: { "content-type": "application/json" },
+      }),
+    );
+    vi.stubGlobal("fetch", upstream);
+
+    const res = await POST(
+      request({
+        url: "svc://default/demo-gateway:80/v1/chat/completions",
+        hostname: "ignored.example.com",
+        body: { model: "gpt-4o-mini", messages: [] },
+      }),
+    );
+    expect((await res.json()).ok).toBe(true);
+
+    const [url, init] = upstream.mock.calls[0] as unknown as [URL, RequestInit];
+    expect(String(url)).toContain("/services/demo-gateway:80/proxy/v1/chat/completions");
+    const headers = init.headers as Record<string, string>;
+    expect(headers.Authorization).toBe("Bearer kube-token");
+    // The API server routes by its own host; the route hostname must not leak.
+    expect(headers.host).toBeUndefined();
+  });
+
+  it("rejects gateway-bound Authorization headers on svc:// urls", async () => {
+    const res = await POST(
+      request({
+        url: "svc://default/demo-gateway:80/v1/chat/completions",
+        authHeader: { name: "Authorization", value: "Bearer sk-test" },
+        body: {},
+      }),
+    );
+    expect(res.status).toBe(403);
+    serviceProxyTarget.mockClear();
+    expect(serviceProxyTarget).not.toHaveBeenCalled();
+  });
+
+  it("surfaces kubeconfig resolution failures as 4xx", async () => {
+    serviceProxyTarget.mockRejectedValue(new Error("unknown context: nope"));
+    const res = await POST(
+      request({ url: "svc://default/demo-gateway:80/v1", body: {} }),
+    );
+    expect(res.status).toBe(403);
   });
 
   it("reports network errors as ok:false with the message", async () => {
