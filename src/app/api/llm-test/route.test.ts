@@ -77,6 +77,16 @@ describe("POST /api/llm-test", () => {
     expect(payload.body).toBe("plain error");
   });
 
+  it("blocks link-local targets (cloud metadata SSRF)", async () => {
+    const upstream = vi.fn();
+    vi.stubGlobal("fetch", upstream);
+    const res = await POST(
+      request({ url: "http://169.254.169.254/latest/meta-data/", body: {} }),
+    );
+    expect(res.status).toBe(403);
+    expect(upstream).not.toHaveBeenCalled();
+  });
+
   it("relays svc:// urls through the API-server proxy with kubeconfig auth", async () => {
     serviceProxyTarget.mockResolvedValue({
       url: "https://10.0.0.1:6443/api/v1/namespaces/default/services/demo-gateway:80/proxy/v1/chat/completions",

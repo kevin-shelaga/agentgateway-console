@@ -54,7 +54,7 @@ export function CrdNotInstalled({ desc }: { desc: ResourceDescriptor }) {
         </p>
         <p className="mx-auto max-w-md text-sm text-muted-foreground">
           The CRD <span className="k8s-id text-foreground">{desc.crdName}</span> is not installed.
-          {desc.group.endsWith("solo.io")
+          {desc.group.endsWith(".solo.io")
             ? " Install the Solo enterprise agentgateway charts to manage this kind."
             : " Install the matching CRDs to manage this kind."}
         </p>

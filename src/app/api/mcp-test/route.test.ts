@@ -106,7 +106,7 @@ describe("POST /api/mcp-test", () => {
       host: "mcp.example.com",
       Authorization: "Bearer sk-test",
     });
-    expect(opts.fetch).toBeUndefined();
+    expect(typeof opts.fetch).toBe("function"); // SSRF-guarded fetch is always injected
     expect(mocks.connect).toHaveBeenCalledOnce();
     expect(mocks.transportClose).toHaveBeenCalledOnce();
   });
