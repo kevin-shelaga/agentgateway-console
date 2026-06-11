@@ -5,10 +5,23 @@ export interface ClusterSnapshot {
   gateways: K8sResource[];
   httproutes: K8sResource[];
   grpcroutes: K8sResource[];
+  /** OSS and enterprise backends together (kinds distinguish them). */
   backends: K8sResource[];
+  /** OSS and enterprise policies together. */
   policies: K8sResource[];
   gatewayclasses: K8sResource[];
 }
+
+const BACKEND_KINDS = new Set(["AgentgatewayBackend", "EnterpriseAgentgatewayBackend"]);
+
+const KIND_TO_DESC_ID: Record<string, string> = {
+  HTTPRoute: "httproutes",
+  GRPCRoute: "grpcroutes",
+  AgentgatewayBackend: "backends",
+  EnterpriseAgentgatewayBackend: "ent-backends",
+  AgentgatewayPolicy: "policies",
+  EnterpriseAgentgatewayPolicy: "ent-policies",
+};
 
 export interface ConfigIssue {
   severity: "warning" | "info";
@@ -37,7 +50,7 @@ export function findConfigIssues(snap: ClusterSnapshot): ConfigIssue[] {
     snap.gateways.map((g) => key("Gateway", g.metadata.namespace, g.metadata.name)),
   );
   const backendKeys = new Set(
-    snap.backends.map((b) => key("AgentgatewayBackend", b.metadata.namespace, b.metadata.name)),
+    snap.backends.map((b) => key(b.kind, b.metadata.namespace, b.metadata.name)),
   );
   const classNames = new Set(snap.gatewayclasses.map((c) => c.metadata.name));
   const routeKeys = new Set(
@@ -64,12 +77,12 @@ export function findConfigIssues(snap: ClusterSnapshot): ConfigIssue[] {
             descId: route.kind === "GRPCRoute" ? "grpcroutes" : "httproutes",
           });
         }
-      } else if (ref.kind === "AgentgatewayBackend") {
+      } else if (BACKEND_KINDS.has(ref.kind)) {
         referencedBackends.add(refKey);
         if (!backendKeys.has(refKey)) {
           issues.push({
             severity: "warning",
-            message: `references missing Backend ${ref.namespace ?? ""}/${ref.name}`,
+            message: `references missing ${ref.kind} ${ref.namespace ?? ""}/${ref.name}`,
             kind: route.kind,
             name: route.metadata.name,
             namespace: route.metadata.namespace,
@@ -107,18 +120,14 @@ export function findConfigIssues(snap: ClusterSnapshot): ConfigIssue[] {
   }
 
   for (const backend of snap.backends) {
-    if (
-      !referencedBackends.has(
-        key("AgentgatewayBackend", backend.metadata.namespace, backend.metadata.name),
-      )
-    ) {
+    if (!referencedBackends.has(key(backend.kind, backend.metadata.namespace, backend.metadata.name))) {
       issues.push({
         severity: "info",
         message: "not referenced by any route",
-        kind: "AgentgatewayBackend",
+        kind: backend.kind,
         name: backend.metadata.name,
         namespace: backend.metadata.namespace,
-        descId: "backends",
+        descId: KIND_TO_DESC_ID[backend.kind] ?? "backends",
       });
     }
   }
@@ -126,6 +135,7 @@ export function findConfigIssues(snap: ClusterSnapshot): ConfigIssue[] {
   const resolvable: Record<string, Set<string>> = {
     Gateway: gatewayKeys,
     AgentgatewayBackend: backendKeys,
+    EnterpriseAgentgatewayBackend: backendKeys,
     HTTPRoute: routeKeys,
     GRPCRoute: routeKeys,
   };
@@ -136,10 +146,10 @@ export function findConfigIssues(snap: ClusterSnapshot): ConfigIssue[] {
         issues.push({
           severity: "warning",
           message: `targets missing ${ref.kind} ${ref.namespace ?? ""}/${ref.name}`,
-          kind: "AgentgatewayPolicy",
+          kind: policy.kind,
           name: policy.metadata.name,
           namespace: policy.metadata.namespace,
-          descId: "policies",
+          descId: KIND_TO_DESC_ID[policy.kind] ?? "policies",
         });
       }
     }

@@ -79,7 +79,8 @@ export function getReferences(res: K8sResource): ResourceRef[] {
       }
       break;
     }
-    case "AgentgatewayPolicy": {
+    case "AgentgatewayPolicy":
+    case "EnterpriseAgentgatewayPolicy": {
       for (const t of asArray(spec.targetRefs)) {
         out.push(ref(t.kind as string, t.name as string, "target", ns));
       }

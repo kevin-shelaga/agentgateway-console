@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useClusterInfo, useResourceList } from "@/lib/hooks";
+import { useClusterInfo, useResourceList, useResourceListOptional } from "@/lib/hooks";
 import {
   aiProviders,
   findConfigIssues,
@@ -19,7 +19,7 @@ import {
   protocolDistribution,
   type ConfigIssue,
 } from "@/lib/insights";
-import { backendType, getResource } from "@/lib/registry";
+import { backendType, getResource, getResourceByKind } from "@/lib/registry";
 import type { K8sResource, ResourceDescriptor, StatusSummary } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -31,6 +31,7 @@ function detailHref(desc: ResourceDescriptor, res: K8sResource): string {
 const BACKEND_TYPE_LABEL: Record<string, string> = {
   ai: "AI / LLM",
   mcp: "MCP",
+  entMcp: "MCP (enterprise)",
   static: "Static",
   dynamicForwardProxy: "Forward proxy",
   aws: "AWS",
@@ -105,12 +106,31 @@ export function Dashboard() {
   const policiesDesc = getResource("policies")!;
   const gatewayclassesDesc = getResource("gatewayclasses")!;
 
+  const entBackendsDesc = getResource("ent-backends")!;
+  const entPoliciesDesc = getResource("ent-policies")!;
+  const listenersetsDesc = getResource("listenersets")!;
+  const entListenersetsDesc = getResource("ent-listenersets")!;
+
   const gateways = useResourceList(gatewaysDesc);
   const httproutes = useResourceList(httproutesDesc);
   const grpcroutes = useResourceList(grpcroutesDesc);
   const backends = useResourceList(backendsDesc);
   const policies = useResourceList(policiesDesc);
   const gatewayclasses = useResourceList(gatewayclassesDesc);
+  // Optional kinds: missing CRDs (enterprise / ListenerSet) count as empty.
+  const entBackends = useResourceListOptional(entBackendsDesc);
+  const entPolicies = useResourceListOptional(entPoliciesDesc);
+  const listenersets = useResourceListOptional(listenersetsDesc);
+  const entListenersets = useResourceListOptional(entListenersetsDesc);
+
+  const allBackendsData = useMemo(
+    () => [...(backends.data ?? []), ...(entBackends.data ?? [])],
+    [backends.data, entBackends.data],
+  );
+  const allPoliciesData = useMemo(
+    () => [...(policies.data ?? []), ...(entPolicies.data ?? [])],
+    [policies.data, entPolicies.data],
+  );
 
   const withStatus = (desc: ResourceDescriptor, items: K8sResource[] | undefined) =>
     (items ?? []).map((res) => ({ res, status: desc.getStatus(res) }));
@@ -123,8 +143,16 @@ export function Dashboard() {
     ],
     [httproutes.data, grpcroutes.data, httproutesDesc, grpcroutesDesc],
   );
-  const backendItems = useMemo(() => withStatus(backendsDesc, backends.data), [backends.data, backendsDesc]);
-  const policyItems = useMemo(() => withStatus(policiesDesc, policies.data), [policies.data, policiesDesc]);
+  // Status extraction is kind-agnostic (summarizeStatus) for these kinds.
+  const backendItems = useMemo(() => withStatus(backendsDesc, allBackendsData), [allBackendsData, backendsDesc]);
+  const policyItems = useMemo(() => withStatus(policiesDesc, allPoliciesData), [allPoliciesData, policiesDesc]);
+  const listenerSetItems = useMemo(
+    () => [
+      ...withStatus(listenersetsDesc, listenersets.data),
+      ...withStatus(entListenersetsDesc, entListenersets.data),
+    ],
+    [listenersets.data, entListenersets.data, listenersetsDesc, entListenersetsDesc],
+  );
 
   const attention = useMemo(() => {
     const all = [
@@ -133,11 +161,12 @@ export function Dashboard() {
         ...i,
         desc: i.res.kind === "GRPCRoute" ? grpcroutesDesc : httproutesDesc,
       })),
-      ...backendItems.map((i) => ({ ...i, desc: backendsDesc })),
-      ...policyItems.map((i) => ({ ...i, desc: policiesDesc })),
+      ...backendItems.map((i) => ({ ...i, desc: getResourceByKind(i.res.kind) ?? backendsDesc })),
+      ...policyItems.map((i) => ({ ...i, desc: getResourceByKind(i.res.kind) ?? policiesDesc })),
+      ...listenerSetItems.map((i) => ({ ...i, desc: getResourceByKind(i.res.kind) ?? listenersetsDesc })),
     ];
     return all.filter((i) => i.status.state === "Degraded");
-  }, [gatewayItems, routeItems, backendItems, policyItems, gatewaysDesc, httproutesDesc, grpcroutesDesc, backendsDesc, policiesDesc]);
+  }, [gatewayItems, routeItems, backendItems, policyItems, listenerSetItems, gatewaysDesc, httproutesDesc, grpcroutesDesc, backendsDesc, policiesDesc, listenersetsDesc]);
 
   const allListsLoaded =
     !!gateways.data &&
@@ -153,16 +182,16 @@ export function Dashboard() {
       gateways: gateways.data!,
       httproutes: httproutes.data!,
       grpcroutes: grpcroutes.data!,
-      backends: backends.data!,
-      policies: policies.data!,
+      backends: allBackendsData,
+      policies: allPoliciesData,
       gatewayclasses: gatewayclasses.data!,
     });
-  }, [allListsLoaded, gateways.data, httproutes.data, grpcroutes.data, backends.data, policies.data, gatewayclasses.data]);
+  }, [allListsLoaded, gateways.data, httproutes.data, grpcroutes.data, allBackendsData, allPoliciesData, gatewayclasses.data]);
 
   const protocols = useMemo(() => protocolDistribution(gateways.data ?? []), [gateways.data]);
   const protocolMax = Math.max(1, ...protocols.map((p) => p.count));
-  const policyStats = useMemo(() => policyBreakdown(policies.data ?? []), [policies.data]);
-  const providers = useMemo(() => aiProviders(backends.data ?? []), [backends.data]);
+  const policyStats = useMemo(() => policyBreakdown(allPoliciesData), [allPoliciesData]);
+  const providers = useMemo(() => aiProviders(allBackendsData), [allBackendsData]);
 
   const backendsByType = useMemo(() => {
     const counts = new Map<string, number>();

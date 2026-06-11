@@ -18,7 +18,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { testLlm, type LlmTestResult } from "@/lib/api-client";
-import { useResourceList } from "@/lib/hooks";
+import { useResourceList, useResourceListOptional } from "@/lib/hooks";
 import { defaultModel, resolveLlmEndpoints, suggestUrl } from "@/lib/llm-endpoints";
 import { backendType, getResource } from "@/lib/registry";
 import { cn } from "@/lib/utils";
@@ -43,12 +43,13 @@ function extractUsage(body: unknown): string | null {
 export function LlmPanel() {
   const backendsDesc = getResource("backends")!;
   const { data: backends } = useResourceList(backendsDesc);
+  const { data: entBackends } = useResourceListOptional(getResource("ent-backends")!);
   const { data: httproutes } = useResourceList(getResource("httproutes")!);
   const { data: gateways } = useResourceList(getResource("gateways")!);
 
   const aiBackends = useMemo(
-    () => (backends ?? []).filter((b) => backendType(b) === "ai"),
-    [backends],
+    () => [...(backends ?? []), ...(entBackends ?? [])].filter((b) => backendType(b) === "ai"),
+    [backends, entBackends],
   );
 
   const [backendKey, setBackendKey] = useState<string>("");

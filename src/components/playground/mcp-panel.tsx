@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { useResourceList } from "@/lib/hooks";
+import { useResourceList, useResourceListOptional } from "@/lib/hooks";
 import { resolveLlmEndpoints, suggestMcpUrl } from "@/lib/llm-endpoints";
 import { testMcp, type McpTestResult, type McpTool } from "@/lib/mcp-client";
 import { backendType, getResource } from "@/lib/registry";
@@ -41,12 +41,16 @@ function emptyFields(tool: McpTool): Record<string, FieldValue> {
 export function McpPanel() {
   const backendsDesc = getResource("backends")!;
   const { data: backends } = useResourceList(backendsDesc);
+  const { data: entBackends } = useResourceListOptional(getResource("ent-backends")!);
   const { data: httproutes } = useResourceList(getResource("httproutes")!);
   const { data: gateways } = useResourceList(getResource("gateways")!);
 
   const mcpBackends = useMemo(
-    () => (backends ?? []).filter((b) => backendType(b) === "mcp"),
-    [backends],
+    () =>
+      [...(backends ?? []), ...(entBackends ?? [])].filter((b) =>
+        ["mcp", "entMcp"].includes(backendType(b)),
+      ),
+    [backends, entBackends],
   );
 
   const [backendKey, setBackendKey] = useState<string>("");

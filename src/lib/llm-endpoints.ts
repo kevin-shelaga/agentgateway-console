@@ -31,7 +31,7 @@ export function resolveLlmEndpoints(
     const refs = getReferences(route);
     const referencesBackend = refs.some(
       (r) =>
-        r.kind === "AgentgatewayBackend" &&
+        r.kind === backend.kind &&
         r.name === backend.metadata.name &&
         (r.namespace ?? backend.metadata.namespace) === backend.metadata.namespace,
     );

@@ -91,6 +91,36 @@ describe("findConfigIssues", () => {
     expect(issues.some((i) => i.message.includes("ghost"))).toBe(true);
   });
 
+  it("validates references to enterprise backends and reports their orphans", () => {
+    const entBackend = res("EnterpriseAgentgatewayBackend", "ent-be", "infra", {
+      entMcp: { toolMode: "Code", targets: [] },
+    });
+    const route = res("HTTPRoute", "r", "infra", {
+      parentRefs: [{ name: "gw" }],
+      rules: [
+        {
+          backendRefs: [
+            {
+              name: "missing-ent",
+              group: "enterpriseagentgateway.solo.io",
+              kind: "EnterpriseAgentgatewayBackend",
+            },
+          ],
+        },
+      ],
+    });
+    const issues = findConfigIssues(
+      snap({ gateways: [gw], httproutes: [route], backends: [entBackend] }),
+    );
+    expect(issues.some((i) => i.severity === "warning" && i.message.includes("missing-ent"))).toBe(
+      true,
+    );
+    // ent-be exists but nothing references it → orphan info on the right page.
+    const orphan = issues.find((i) => i.name === "ent-be");
+    expect(orphan?.severity).toBe("info");
+    expect(orphan?.descId).toBe("ent-backends");
+  });
+
   it("is clean for a fully wired setup", () => {
     const backend = res("AgentgatewayBackend", "be", "infra", { static: { host: "x", port: 1 } });
     const route = res("HTTPRoute", "r", "infra", {

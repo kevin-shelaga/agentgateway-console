@@ -56,3 +56,21 @@ describe("defaultModel", () => {
     expect(defaultModel({ ...aiBackend, spec: { ai: { provider: { openai: {} } } } })).toBe("");
   });
 });
+
+describe("enterprise backends", () => {
+  it("resolves endpoints for routes referencing EnterpriseAgentgatewayBackend", () => {
+    const entBackend: K8sResource = {
+      apiVersion: "enterpriseagentgateway.solo.io/v1alpha1",
+      kind: "EnterpriseAgentgatewayBackend",
+      metadata: { name: "ent-ai", namespace: "agents" },
+      spec: { ai: { provider: { anthropic: { model: "claude-sonnet-4-5" } } } },
+    };
+    const route: K8sResource = JSON.parse(JSON.stringify(httpRoute));
+    (route.spec!.rules as Array<Record<string, unknown>>)[0].backendRefs = [
+      { name: "ent-ai", group: "enterpriseagentgateway.solo.io", kind: "EnterpriseAgentgatewayBackend" },
+    ];
+    const endpoints = resolveLlmEndpoints(entBackend, [route], [gateway]);
+    expect(endpoints.length).toBeGreaterThan(0);
+    expect(defaultModel(entBackend)).toBe("claude-sonnet-4-5");
+  });
+});

@@ -18,7 +18,7 @@ import {
   getResourceItem,
   listResources,
 } from "./api-client";
-import { updateResource } from "./api-client";
+import { ApiError, updateResource } from "./api-client";
 import { READONLY_RESOURCES } from "./registry";
 import type { K8sResource, ResourceDescriptor } from "./types";
 
@@ -39,6 +39,25 @@ export function useResourceList(desc: ResourceDescriptor, namespace?: string) {
   return useQuery({
     queryKey: ["list", context, desc.id, namespace ?? ""],
     queryFn: () => listResources(desc, namespace),
+  });
+}
+
+/**
+ * Like useResourceList, but a missing CRD (404) yields an empty list instead
+ * of an error — for kinds that may not be installed (enterprise, ListenerSet).
+ */
+export function useResourceListOptional(desc: ResourceDescriptor, namespace?: string) {
+  const { context } = useKubeContext();
+  return useQuery({
+    queryKey: ["list-optional", context, desc.id, namespace ?? ""],
+    queryFn: async () => {
+      try {
+        return await listResources(desc, namespace);
+      } catch (err) {
+        if (err instanceof ApiError && err.parsed.status === 404) return [];
+        throw err;
+      }
+    },
   });
 }
 
