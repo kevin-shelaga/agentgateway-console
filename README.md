@@ -27,7 +27,7 @@
 
 ## Why this exists
 
-The [agentgateway](https://github.com/agentgateway/agentgateway) project ships a UI for its standalone (file-config) mode, but the **Kubernetes deployment mode** — driven by Gateway API resources plus the `agentgateway.dev` CRDs — has been kubectl-only. This console fills that gap: a purpose-built control panel for the seven kinds that define an agentgateway deployment, with validation driven by the CRDs themselves so the UI can never drift from the API.
+The [agentgateway](https://github.com/agentgateway/agentgateway) project ships a UI for its standalone (file-config) mode, but the **Kubernetes deployment mode** — driven by Gateway API resources plus the `agentgateway.dev` CRDs — has been kubectl-only. This console fills that gap: a purpose-built control panel for every kind that defines an agentgateway deployment — Gateway API, agentgateway.dev, and the Solo enterprise groups, with validation driven by the CRDs themselves so the UI can never drift from the API.
 
 ## 📦 What it manages
 
@@ -35,36 +35,54 @@ The [agentgateway](https://github.com/agentgateway/agentgateway) project ships a
 |---|---|---|
 | `GatewayClass` | `gateway.networking.k8s.io/v1` | Gateway implementations + parameters |
 | `Gateway` | `gateway.networking.k8s.io/v1` | Listeners, ports, TLS |
+| `ListenerSet` | `gateway.networking.k8s.io/v1` | Extra listeners attached to a parent gateway |
 | `HTTPRoute` | `gateway.networking.k8s.io/v1` | HTTP routing rules |
 | `GRPCRoute` | `gateway.networking.k8s.io/v1` | gRPC routing rules |
+| `TLSRoute` | `gateway.networking.k8s.io/v1` | SNI-based TLS passthrough routing |
+| `BackendTLSPolicy` | `gateway.networking.k8s.io/v1` | TLS verification for gateway → backend connections |
+| `ReferenceGrant` | `gateway.networking.k8s.io/v1` | Cross-namespace reference permissions |
 | `AgentgatewayBackend` | `agentgateway.dev/v1alpha1` | AI/LLM providers, MCP servers, static upstreams |
 | `AgentgatewayPolicy` | `agentgateway.dev/v1alpha1` | Traffic / frontend / backend policy attachment |
 | `AgentgatewayParameters` | `agentgateway.dev/v1alpha1` | Data plane deployment settings |
+| `EnterpriseAgentgatewayBackend` | `enterpriseagentgateway.solo.io/v1alpha1` | Enterprise backends incl. `entMcp` tool modes |
+| `EnterpriseAgentgatewayPolicy` | `enterpriseagentgateway.solo.io/v1alpha1` | Enterprise policies (extAuth, rate limiting, CSRF, extProc, …) |
+| `EnterpriseAgentgatewayParameters` | `enterpriseagentgateway.solo.io/v1alpha1` | Data plane settings + shared extensions (extauth/ratelimiter/extCache) |
+| `EnterpriseListenerSet` | `enterprise.solo.io/v1alpha1` | Enterprise listener sets |
 
 > [!NOTE]
-> Namespaces, Services, and Secrets are read **names-only** to power picker dropdowns — secret payloads never leave the server.
+> Namespaces, Services, and Secrets are read **names-only** to power picker dropdowns — secret payloads never leave the server. Pods (and their logs) are readable only for agentgateway proxy / control-plane pods, enforced by a label scope guard in the BFF.
+
+### Enterprise install
+
+The four `solo.io` kinds get their own **Enterprise** sidebar group and participate everywhere the OSS kinds do: dashboard tiles and breakdowns, completeness checks, the playground pickers, route `backendRefs` / policy `targetRefs` selectors, the API-key "referenced by" join, and the reference graph. On clusters **without** the enterprise CRDs everything degrades gracefully — lists show a "CRD not installed" state and dashboard/playground queries treat the missing kinds as empty. Enterprise schemas are bundled from a sibling `agentgateway-enterprise` checkout when present (`node scripts/extract-schemas.mjs` skips them otherwise).
 
 ## 🧭 Version compatibility
 
 | Component | Supported | Notes |
 |---|---|---|
 | [agentgateway](https://github.com/agentgateway/agentgateway) | **v1.0.0+** | Every release since v1.0.0 ships the `agentgateway.dev/v1alpha1` CRDs the console manages |
-| [Gateway API](https://gateway-api.sigs.k8s.io) | **v1.1+** (v1.5.x recommended) | The console uses only `v1` kinds; `GRPCRoute` reached `v1` in Gateway API 1.1. agentgateway itself installs and tests against 1.5.x |
+| [Gateway API](https://gateway-api.sigs.k8s.io) | **v1.1+** (v1.5.x recommended) | The console prefers `v1` and **negotiates older served versions per CRD** (e.g. `TLSRoute v1alpha3`, `ReferenceGrant v1beta1`), so mixed-version clusters work. agentgateway itself installs and tests against 1.5.x |
 | Kubernetes | Whatever your Gateway API release supports | Upstream Gateway API supports the [five most recent Kubernetes minors](https://gateway-api.sigs.k8s.io/concepts/versioning/). The console itself only needs CRD reads and server-side dry-run |
 | Node.js (local dev) | **20+** | The Docker image runs Node 22 |
+| [agentgateway-enterprise](https://docs.solo.io/agentgateway/) | optional | Enterprise kinds appear automatically when the `solo.io` CRDs are installed; absent CRDs degrade to a "not installed" state |
 
-The console is deliberately **version-tolerant**: validation schemas are read live from the CRDs installed in your cluster, so when a new agentgateway release adds fields, the editor and validation pick them up immediately — no console upgrade needed. The bundled fallback schemas (used only when the cluster can't serve CRDs) currently track agentgateway `main` as of 2026-06-09; refresh them anytime with `node scripts/extract-schemas.mjs`.
+The console is deliberately **version-tolerant**: validation schemas are read live from the CRDs installed in your cluster, so when a new agentgateway release adds fields, the editor and validation pick them up immediately — no console upgrade needed. The bundled fallback schemas (used only when the cluster can't serve CRDs) currently track agentgateway and agentgateway-enterprise `main` as of 2026-06-11; refresh them anytime with `node scripts/extract-schemas.mjs`.
 
 > [!IMPORTANT]
 > The `agentgateway.dev` API group is still **v1alpha1** — breaking changes upstream are possible between agentgateway minor versions. Because schemas are cluster-sourced, the YAML editor and validation will follow such changes automatically, but the guided forms cover the spec as of the bundled snapshot; anything newer is still editable through YAML.
 
 ## ✨ Features
 
-- 📊 **Dashboard** — gateway fleet health computed from status conditions, backend breakdown by type, and a "needs attention" triage list with deep links to every degraded resource.
-- 🗂️ **List & detail pages** — namespace filter, text search, status badges, condition timelines, and a resolved reference graph (which routes attach to a gateway, which policies target what).
-- ✏️ **Split form ⇄ YAML editor** — guided forms for the common cases, a schema-aware CodeMirror YAML editor for 100% of the spec. Both edit the same document, synced live in both directions.
+- 📊 **Dashboard** — gateway fleet health from status conditions, runtime pods with live CPU/memory sparklines, backend/policy/protocol/AI-provider breakdowns, and a "needs attention" triage list mixing condition failures with **configuration completeness checks** (routes → missing gateways/backends, orphaned backends, dangling policy targets — things controllers never report).
+- 🗂️ **List & detail pages** — namespace filter, text search, **click-to-sort columns and faceted value filters**, status badges, condition timelines, and a resolved reference graph (which routes attach to a gateway, which policies target what).
+- ✏️ **Split form ⇄ YAML editor** — guided forms for every OSS kind, a schema-aware CodeMirror YAML editor for 100% of the spec. Both edit the same document, synced live in both directions.
 - 🛡️ **Three-layer validation, driven by the CRDs themselves** — structural errors as you type, CEL and admission webhook errors before anything persists (see [How validation works](#how-validation-works)).
+- 🧪 **Playground** — send a real chat completion (LLM tab) or connect, list tools, and call them over MCP Streamable HTTP (MCP tab) **through the actual gateway**, with endpoints auto-discovered from the backend → route → gateway → address graph.
+- 🔑 **API key management** — LLM credentials as `Opaque` Secrets with an `Authorization` entry (the format `spec.policies.auth.secretRef` consumes): create with a crypto-random `sk_…` generator, rotate, delete, see which backends reference each key. Values are write-only — never displayed, returned, or logged after creation.
+- 📈 **Pod detail pages** — click any runtime pod for CPU/memory area charts with labeled scales and request/limit reference lines, plus **live log tailing** over a chunked follow stream (container picker, tail size, auto-reconnect, download).
+- 🏢 **Enterprise support** — the `solo.io` kinds managed side by side with OSS (see [Enterprise install](#enterprise-install)).
 - 🔄 **Kubeconfig context switcher** — operate any cluster your kubeconfig can reach from the widget at the bottom of the sidebar; in-cluster deployments are hard-locked to their own cluster for isolation.
+- 🧭 **Served-version negotiation** — clusters skew Gateway API versions (e.g. `TLSRoute v1alpha3`, `ReferenceGrant v1beta1`); the BFF reads each CRD's served versions and aligns reads, writes, and schemas automatically.
 - 🌙 **Dark-mode-first UI** — agentgateway brand identity on shadcn/ui primitives, with a light theme one toggle away.
 
 ### How validation works
@@ -145,7 +163,7 @@ docker run -p 3000:3000 -v ~/.kube:/home/agc/.kube:ro agentgateway-console
 
 ### In-cluster
 
-When `KUBERNETES_SERVICE_HOST` is set, the BFF automatically uses the pod's ServiceAccount and locks itself to the surrounding cluster (no context switching). The ServiceAccount needs read access to everything the console shows, write access to the managed kinds, and `get` on CRDs for live schemas:
+When `KUBERNETES_SERVICE_HOST` is set, the BFF automatically uses the pod's ServiceAccount and locks itself to the surrounding cluster (no context switching). The Helm chart's [`rbac.yaml`](charts/agentgateway-console/templates/rbac.yaml) is the canonical, always-current permission set; the example below mirrors it for raw-manifest installs:
 
 <details>
 <summary><b>Example RBAC + Deployment manifest</b></summary>
@@ -164,16 +182,32 @@ metadata:
 rules:
   # Managed kinds — full read/write
   - apiGroups: ["gateway.networking.k8s.io"]
-    resources: ["gatewayclasses", "gateways", "httproutes", "grpcroutes"]
+    resources: ["gatewayclasses", "gateways", "listenersets", "httproutes",
+                "grpcroutes", "tlsroutes", "backendtlspolicies", "referencegrants"]
     verbs: ["get", "list", "create", "update", "delete"]
   - apiGroups: ["agentgateway.dev"]
     resources: ["agentgatewaybackends", "agentgatewaypolicies", "agentgatewayparameters"]
     verbs: ["get", "list", "create", "update", "delete"]
-  # Picker support — names only, read-only
+  # Enterprise (no-op without the CRDs)
+  - apiGroups: ["enterpriseagentgateway.solo.io"]
+    resources: ["enterpriseagentgatewaybackends", "enterpriseagentgatewaypolicies",
+                "enterpriseagentgatewayparameters"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  - apiGroups: ["enterprise.solo.io"]
+    resources: ["enterpriselistenersets"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  # Pickers + API keys (secret payloads never leave the server)
   - apiGroups: [""]
     resources: ["namespaces", "services", "secrets"]
+    verbs: ["get", "list", "create", "update", "delete"]
+  # Runtime panel + pod pages: agentgateway pods, usage, logs
+  - apiGroups: [""]
+    resources: ["pods", "pods/log"]
     verbs: ["get", "list"]
-  # Live CRD schemas for validation
+  - apiGroups: ["metrics.k8s.io"]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  # Live CRD schemas + served-version negotiation
   - apiGroups: ["apiextensions.k8s.io"]
     resources: ["customresourcedefinitions"]
     verbs: ["get"]
@@ -238,7 +272,7 @@ flowchart LR
         UI["React UI<br/>dashboard · lists · editor"]
     end
     subgraph "Next.js server (BFF)"
-        API["API routes<br/><code>/api/resources · /api/dry-run<br/>/api/schemas · /api/contexts</code>"]
+        API["API routes<br/><code>/api/resources · /api/dry-run · /api/schemas<br/>/api/contexts · /api/infra · /api/pods (+logs/stream)<br/>/api/llm-keys · /api/llm-test · /api/mcp-test</code>"]
         G["GVK allowlist<br/>secret stripping<br/>dry-run proxy"]
     end
     K8S[("Kubernetes API<br/>kubeconfig or<br/>in-cluster SA")]
@@ -257,8 +291,11 @@ The UI is **registry-driven**: one descriptor per kind supplies columns, status 
 | [`src/lib/validation.ts`](src/lib/validation.ts) | AJV over CRD schemas (the structural layer; CEL runs server-side via dry-run) |
 | [`src/lib/k8s/`](src/lib/k8s) | Kubeconfig/in-cluster client factory, typed K8s error parsing |
 | [`src/components/editor/resource-editor.tsx`](src/components/editor/resource-editor.tsx) | Split form/YAML editor and the dry-run-gated save pipeline |
-| [`src/components/forms/`](src/components/forms) | Guided forms for all seven managed kinds |
-| [`src/app/api/`](src/app/api) | The BFF: resource CRUD, dry-run, schemas, contexts, cluster health |
+| [`src/lib/insights.ts`](src/lib/insights.ts) | Cross-resource completeness checks + dashboard aggregations |
+| [`src/lib/llm-endpoints.ts`](src/lib/llm-endpoints.ts) | Backend → route → gateway endpoint discovery for the playground |
+| [`src/lib/metrics-history.ts`](src/lib/metrics-history.ts) | Session-wide usage history feeding sparklines and pod charts |
+| [`src/components/forms/`](src/components/forms) | Guided forms for every editable kind |
+| [`src/app/api/`](src/app/api) | The BFF: resource CRUD, dry-run, schemas, contexts, infra/pods/logs, LLM keys, LLM/MCP test proxies |
 
 ## 🛠 Development
 
