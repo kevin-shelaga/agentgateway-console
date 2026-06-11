@@ -33,15 +33,15 @@ async function fetchLlmMetrics(): Promise<LlmMetricsResponse> {
   return body as LlmMetricsResponse;
 }
 
-const POLL_MS = 15_000;
+export const DEFAULT_POLL_MS = 15_000;
 
 /** Polls the cluster-summed metrics and feeds the session rate history. */
-export function useLlmMetrics() {
+export function useLlmMetrics(pollMs: number = DEFAULT_POLL_MS) {
   const { context } = useKubeContext();
   const query = useQuery({
     queryKey: ["llm-metrics", context],
     queryFn: fetchLlmMetrics,
-    refetchInterval: POLL_MS,
+    refetchInterval: pollMs,
   });
   useEffect(() => {
     if (query.data) recordScrape(query.data.samples, query.data.at);

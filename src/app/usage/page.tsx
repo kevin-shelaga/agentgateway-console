@@ -35,6 +35,9 @@ const GUARDRAILS = "agentgateway_guardrail_checks_total";
 /** Label added via AgentgatewayParameters `config.metrics.fields.add.user`. */
 const USER_LABEL = "user";
 
+/** Poll-interval choices in seconds. */
+const POLL_OPTIONS = [5, 15, 30];
+
 const WINDOWS = [
   { minutes: 5, label: "5m" },
   { minutes: 15, label: "15m" },
@@ -139,7 +142,8 @@ function StatCard({
 }
 
 export default function UsagePage() {
-  const { data, error, dataUpdatedAt } = useLlmMetrics();
+  const [pollSec, setPollSec] = useState(15);
+  const { data, error, dataUpdatedAt } = useLlmMetrics(pollSec * 1000);
   const [windowMin, setWindowMin] = useState(30);
   const windowMs = windowMin * 60_000;
 
@@ -226,25 +230,54 @@ export default function UsagePage() {
             )}
           </span>
         }
-        description="Token consumption and traffic, scraped live from every proxy replica and summed — trends build while the console is open (15s polls)"
+        description="Token consumption and traffic, scraped live from every proxy replica and summed — trends build while the console is open"
       />
       <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-1 rounded-lg border p-0.5">
-          {WINDOWS.map((w) => (
-            <button
-              key={w.minutes}
-              type="button"
-              aria-pressed={windowMin === w.minutes}
-              onClick={() => setWindowMin(w.minutes)}
-              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-                windowMin === w.minutes
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {w.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+              Window
+            </span>
+            <div className="flex items-center gap-1 rounded-lg border p-0.5">
+              {WINDOWS.map((w) => (
+                <button
+                  key={w.minutes}
+                  type="button"
+                  aria-pressed={windowMin === w.minutes}
+                  onClick={() => setWindowMin(w.minutes)}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    windowMin === w.minutes
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {w.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+              Refresh
+            </span>
+            <div className="flex items-center gap-1 rounded-lg border p-0.5">
+              {POLL_OPTIONS.map((seconds) => (
+                <button
+                  key={seconds}
+                  type="button"
+                  aria-pressed={pollSec === seconds}
+                  onClick={() => setPollSec(seconds)}
+                  className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                    pollSec === seconds
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  {seconds}s
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         {data && data.failed.length > 0 && (
           <p className="text-xs text-warning">
