@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/agentgateway/agentgateway-console
+  repository: ghcr.io/kevin-shelaga/agentgateway-console
   tag: "" # defaults to chart appVersion
   pullPolicy: IfNotPresent
 

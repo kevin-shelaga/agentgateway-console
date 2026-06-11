@@ -121,6 +121,19 @@ npx agentgateway-console -p 4000 -c my-context # pick port + starting context
 npx agentgateway-console --kubeconfig ~/.kube/staging --no-open
 ```
 
+### Demo environment
+
+No cluster handy? The repo ships a self-contained demo — a kind cluster with agentgateway, a Gateway/HTTPRoutes, two AI backends wired to a mock LLM (randomized token counts), and a traffic generator so every page of the console has live data. Requires `docker`, `kind`, `kubectl`, and `helm`:
+
+```bash
+make demo-up        # cluster + agentgateway + demo app
+make demo-traffic   # send mixed traffic for ~5 min (Usage page lights up in ~30s)
+make demo-console   # console on the kind context
+make demo-down      # tear down
+```
+
+See [`demo/README.md`](demo/README.md) for details and knobs.
+
 ### Configuration
 
 | Variable | Default | Effect |
@@ -134,12 +147,15 @@ npx agentgateway-console --kubeconfig ~/.kube/staging --no-open
 
 ### Helm (recommended)
 
-The chart in [`charts/agentgateway-console`](charts/agentgateway-console) deploys one console per cluster, **hard-locked to that cluster** — the context switcher is removed and the context header is ignored server-side:
+The chart deploys one console per cluster, **hard-locked to that cluster** — the context switcher is removed and the context header is ignored server-side. Released versions are published as OCI artifacts to ghcr alongside the container image:
 
 ```bash
-helm install console ./charts/agentgateway-console -n agentgateway-system --create-namespace
+helm install console oci://ghcr.io/kevin-shelaga/charts/agentgateway-console \
+  --version 0.1.0 -n agentgateway-system --create-namespace
 kubectl -n agentgateway-system port-forward svc/console-agentgateway-console 3000:80
 ```
+
+From a source checkout, the local chart works the same way: `helm install console ./charts/agentgateway-console …`
 
 The Service is `ClusterIP` by default — no external exposure. An Ingress template exists but is disabled; if you enable it, put authentication in front (see the warning below). RBAC (least-privilege ClusterRole) and the ServiceAccount are created by the chart; set `rbac.create=false` / `serviceAccount.create=false` to bring your own.
 
@@ -323,9 +339,10 @@ Design docs live in [`docs/superpowers/`](docs/superpowers) — the [design spec
 
 ## 🚢 Releasing
 
-Releases publish two artifacts:
+Releases publish three artifacts, plus a GitHub Release with the validated tarballs and checksums attached:
 
 - `ghcr.io/kevin-shelaga/agentgateway-console` for container deployments.
+- `oci://ghcr.io/kevin-shelaga/charts/agentgateway-console` for `helm install`.
 - `agentgateway-console` on npm for `npx agentgateway-console`.
 
 Release flow from an up-to-date `main` branch:
