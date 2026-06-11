@@ -17,7 +17,12 @@ import {
 } from "@/components/ui/select";
 import { deleteAtPath, getAtPath, setAtPath } from "@/lib/object-path";
 
-const TARGET_KINDS = ["Service", "AgentgatewayBackend"] as const;
+const TARGET_KINDS = ["Service", "AgentgatewayBackend", "EnterpriseAgentgatewayBackend"] as const;
+const TARGET_GROUPS: Record<string, string> = {
+  Service: "",
+  AgentgatewayBackend: "agentgateway.dev",
+  EnterpriseAgentgatewayBackend: "enterpriseagentgateway.solo.io",
+};
 
 export function BackendTlsPolicyForm({ doc, onChange }: ResourceFormProps) {
   const namespace = doc.metadata?.namespace;
@@ -69,7 +74,7 @@ export function BackendTlsPolicyForm({ doc, onChange }: ResourceFormProps) {
                       onValueChange={(v) =>
                         onChange(
                           setAtPath(doc, ["spec", "targetRefs", i], {
-                            group: v === "Service" ? "" : "agentgateway.dev",
+                            group: TARGET_GROUPS[v] ?? "",
                             kind: v,
                             name: str(ref.name) ?? "",
                           }),
@@ -100,7 +105,7 @@ export function BackendTlsPolicyForm({ doc, onChange }: ResourceFormProps) {
                       />
                     ) : (
                       <ResourcePicker
-                        resourceId="backends"
+                        resourceId={kind === "EnterpriseAgentgatewayBackend" ? "ent-backends" : "backends"}
                         namespace={namespace}
                         allowFreeText
                         value={str(ref.name) || undefined}

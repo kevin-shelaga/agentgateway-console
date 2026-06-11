@@ -100,6 +100,11 @@ const TARGET_KINDS: ReadonlyArray<{
   { kind: "ListenerSet", group: "gateway.networking.k8s.io" },
   { kind: "Service", group: "", resourceId: "services" },
   { kind: "AgentgatewayBackend", group: "agentgateway.dev", resourceId: "backends" },
+  {
+    kind: "EnterpriseAgentgatewayBackend",
+    group: "enterpriseagentgateway.solo.io",
+    resourceId: "ent-backends",
+  },
 ];
 
 function TargetRefsEditor({ doc, onChange }: ResourceFormProps) {

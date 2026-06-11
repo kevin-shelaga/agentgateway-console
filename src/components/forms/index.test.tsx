@@ -3,10 +3,12 @@ import { FORMS } from "@/components/forms";
 import { getResource, RESOURCES } from "@/lib/registry";
 
 describe("FORMS registry", () => {
-  it("has a guided form for all 11 editable OSS registry kinds", () => {
+  it("has a guided form for all 11 OSS kinds plus shape-compatible enterprise kinds", () => {
     expect(Object.keys(FORMS).sort()).toEqual([
       "backends",
       "backendtlspolicies",
+      "ent-parameters",
+      "ent-policies",
       "gatewayclasses",
       "gateways",
       "grpcroutes",

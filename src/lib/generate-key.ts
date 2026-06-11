@@ -4,10 +4,11 @@ const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789
 const REJECTION_BOUND = 248;
 
 /**
- * Cryptographically random API key, e.g. "agc_kF8…" (40 chars ≈ 238 bits).
+ * Cryptographically random API key in the conventional secret-key format,
+ * e.g. "sk_kF8…" (40 chars ≈ 238 bits).
  * For gateway-issued credentials; provider keys (OpenAI, …) are pasted.
  */
-export function generateApiKey(prefix = "agc", length = 40): string {
+export function generateApiKey(prefix = "sk", length = 40): string {
   let out = "";
   const buffer = new Uint8Array(length * 2);
   while (out.length < length) {

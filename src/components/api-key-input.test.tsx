@@ -28,7 +28,7 @@ describe("ApiKeyInput", () => {
     render(<Harness />);
     const input = document.getElementById("key") as HTMLInputElement;
     fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
-    expect(input.value).toMatch(/^agc_[A-Za-z0-9]{40}$/);
+    expect(input.value).toMatch(/^sk_[A-Za-z0-9]{40}$/);
     expect(input.type).toBe("text");
 
     const again = input.value;
@@ -47,7 +47,7 @@ describe("ApiKeyInput", () => {
     fireEvent.click(screen.getByRole("button", { name: /Generate/ }));
     fireEvent.click(screen.getByRole("button", { name: "Copy key" }));
     expect(writeText).toHaveBeenCalledWith(
-      expect.stringMatching(/^agc_[A-Za-z0-9]{40}$/),
+      expect.stringMatching(/^sk_[A-Za-z0-9]{40}$/),
     );
   });
 });

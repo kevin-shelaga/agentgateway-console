@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getApiextensionsClient } from "@/lib/k8s/client";
 import { contextFrom, forbidden } from "@/lib/k8s/registry-server";
-import { RESOURCES } from "@/lib/registry";
+import { ALL_RESOURCES } from "@/lib/registry";
 import { getBundledSchema } from "@/lib/schemas";
 
 type Params = { params: Promise<{ crd: string }> };
@@ -13,7 +13,7 @@ type Params = { params: Promise<{ crd: string }> };
  */
 export async function GET(req: NextRequest, { params }: Params) {
   const { crd } = await params;
-  if (!RESOURCES.some((r) => r.crdName === crd)) {
+  if (!ALL_RESOURCES.some((r) => r.crdName && r.crdName === crd)) {
     return forbidden(`unknown CRD: ${crd}`);
   }
 

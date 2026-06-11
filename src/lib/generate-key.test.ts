@@ -4,7 +4,7 @@ import { generateApiKey } from "./generate-key";
 describe("generateApiKey", () => {
   it("produces prefixed, alphanumeric keys of the requested strength", () => {
     const key = generateApiKey();
-    expect(key).toMatch(/^agc_[A-Za-z0-9]{40}$/);
+    expect(key).toMatch(/^sk_[A-Za-z0-9]{40}$/);
   });
 
   it("honors a custom prefix", () => {

@@ -4,9 +4,9 @@ import { ArrowDownLeft, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useResourceList } from "@/lib/hooks";
+import { useResourceList, useResourceListOptional } from "@/lib/hooks";
 import { getIncomingRefs, getReferences } from "@/lib/references";
-import { getResource, RESOURCES } from "@/lib/registry";
+import { ENTERPRISE_RESOURCES, getResource, RESOURCES } from "@/lib/registry";
 import type { K8sResource } from "@/lib/types";
 
 function refHref(descId: string | undefined, namespace: string | undefined, name: string) {
@@ -69,11 +69,16 @@ export function RelatedResources({ res }: { res: K8sResource }) {
   const grpcroutes = useResourceList(RESOURCES.find((r) => r.id === "grpcroutes")!);
   const policies = useResourceList(RESOURCES.find((r) => r.id === "policies")!);
   const gateways = useResourceList(RESOURCES.find((r) => r.id === "gateways")!);
+  // Optional kinds (CRDs may be absent): TLS routes and enterprise policies.
+  const tlsroutes = useResourceListOptional(RESOURCES.find((r) => r.id === "tlsroutes")!);
+  const entPolicies = useResourceListOptional(ENTERPRISE_RESOURCES.find((r) => r.id === "ent-policies")!);
 
   const candidates = [
     ...(httproutes.data ?? []),
     ...(grpcroutes.data ?? []),
+    ...(tlsroutes.data ?? []),
     ...(policies.data ?? []),
+    ...(entPolicies.data ?? []),
     ...(gateways.data ?? []),
   ].filter(
     (c) => !(c.kind === res.kind && c.metadata.name === res.metadata.name && c.metadata.namespace === res.metadata.namespace),
@@ -101,7 +106,7 @@ export function RelatedResources({ res }: { res: K8sResource }) {
             />
           ))}
           {incoming.map(({ source, relation }, i) => {
-            const descId = RESOURCES.find((d) => d.kind === source.kind)?.id;
+            const descId = [...RESOURCES, ...ENTERPRISE_RESOURCES].find((d) => d.kind === source.kind)?.id;
             return (
               <RefRow
                 key={`in-${i}`}

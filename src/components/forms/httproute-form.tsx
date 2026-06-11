@@ -117,6 +117,16 @@ export function ParentRefsSection({ doc, onChange }: ResourceFormProps) {
 }
 
 /** backendRefs[] editor for one rule; shared by HTTPRoute and GRPCRoute. */
+/** backendRef kinds routes may point at, with their groups and pickers. */
+const BACKEND_REF_KINDS: Record<string, { group: string; resourceId: string }> = {
+  Service: { group: "", resourceId: "services" },
+  AgentgatewayBackend: { group: "agentgateway.dev", resourceId: "backends" },
+  EnterpriseAgentgatewayBackend: {
+    group: "enterpriseagentgateway.solo.io",
+    resourceId: "ent-backends",
+  },
+};
+
 export function BackendRefsEditor({
   doc,
   onChange,
@@ -137,11 +147,12 @@ export function BackendRefsEditor({
 
   function setKind(i: number, kind: string) {
     const refPath: Path = [...basePath, i];
+    const meta = BACKEND_REF_KINDS[kind] ?? BACKEND_REF_KINDS.Service;
     let next = doc;
-    if (kind === "AgentgatewayBackend") {
-      next = setAtPath(next, [...refPath, "group"], "agentgateway.dev");
-      next = setAtPath(next, [...refPath, "kind"], "AgentgatewayBackend");
-      // AgentgatewayBackend refs don't take a Service port by default.
+    if (meta.group) {
+      next = setAtPath(next, [...refPath, "group"], meta.group);
+      next = setAtPath(next, [...refPath, "kind"], kind);
+      // Backend CRD refs don't take a Service port by default.
       next = deleteAtPath(next, [...refPath, "port"]);
     } else {
       next = deleteAtPath(next, [...refPath, "group"]);
@@ -167,30 +178,32 @@ export function BackendRefsEditor({
       </div>
       {refs.length === 0 && <p className="text-xs text-muted-foreground">No backends yet.</p>}
       {refs.map((ref, i) => {
-        const isAgb = str(ref.kind) === "AgentgatewayBackend";
+        const kind = str(ref.kind) && BACKEND_REF_KINDS[str(ref.kind)!] ? str(ref.kind)! : "Service";
+        const meta = BACKEND_REF_KINDS[kind];
+        const isAgb = !!meta.group;
         return (
           <div key={i} className="flex items-start gap-2">
             <div className="grid flex-1 grid-cols-1 gap-3 sm:grid-cols-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">Kind</Label>
-                <Select
-                  value={isAgb ? "AgentgatewayBackend" : "Service"}
-                  onValueChange={(v) => setKind(i, v)}
-                >
+                <Select value={kind} onValueChange={(v) => setKind(i, v)}>
                   <SelectTrigger className="h-8 w-full text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Service">Service</SelectItem>
-                    <SelectItem value="AgentgatewayBackend">AgentgatewayBackend</SelectItem>
+                    {Object.keys(BACKEND_REF_KINDS).map((k) => (
+                      <SelectItem key={k} value={k}>
+                        {k}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs">Name</Label>
-                {isAgb ? (
+                {meta.resourceId !== "services" ? (
                   <ResourcePicker
-                    resourceId="backends"
+                    resourceId={meta.resourceId}
                     allowFreeText
                     namespace={str(ref.namespace) ?? namespace}
                     value={str(ref.name)}

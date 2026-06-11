@@ -58,7 +58,7 @@ import {
 } from "@/components/ui/table";
 import { ApiError } from "@/lib/api-client";
 import { formatAge } from "@/lib/format";
-import { useNamespaces, useResourceList } from "@/lib/hooks";
+import { useNamespaces, useResourceList, useResourceListOptional } from "@/lib/hooks";
 import {
   PROVIDER_LABEL,
   useCreateLlmKey,
@@ -106,7 +106,12 @@ export default function ApiKeysPage() {
   const [deleteTarget, setDeleteTarget] = useState<LlmKeyMeta | null>(null);
 
   const { data: keys, isLoading, error, refetch, isRefetching } = useLlmKeys(namespace);
-  const { data: backends } = useResourceList(backendsDesc);
+  const { data: ossBackends } = useResourceList(backendsDesc);
+  const { data: entBackends } = useResourceListOptional(getResource("ent-backends")!);
+  const backends = useMemo(
+    () => [...(ossBackends ?? []), ...(entBackends ?? [])],
+    [ossBackends, entBackends],
+  );
   const deleteKey = useDeleteLlmKey();
 
   const items = useMemo(() => keys ?? [], [keys]);

@@ -28,4 +28,8 @@ export const FORMS: Record<string, ComponentType<ResourceFormProps>> = {
   referencegrants: ReferenceGrantForm,
   parameters: ParametersForm,
   policies: PolicyForm,
+  // Enterprise kinds share the OSS spec shapes these forms edit; enterprise-
+  // only fields (entMcp, sharedExtensions, ...) remain YAML-side.
+  "ent-policies": PolicyForm,
+  "ent-parameters": ParametersForm,
 };

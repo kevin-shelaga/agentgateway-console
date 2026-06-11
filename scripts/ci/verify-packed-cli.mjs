@@ -10,6 +10,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..")
 const tmp = mkdtempSync(path.join(tmpdir(), "agentgateway-console-package-"));
 const installDir = path.join(tmp, "install");
 const npmEnv = { ...process.env, npm_config_cache: path.join(tmp, "npm-cache") };
+const tarballArg = process.argv[2];
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
@@ -84,24 +85,30 @@ let child;
 try {
   mkdirSync(installDir);
 
-  run("npm", ["run", "build"], { env: npmEnv });
+  let tarballPath;
+  if (tarballArg) {
+    tarballPath = path.resolve(root, tarballArg);
+  } else {
+    run("npm", ["run", "build"], { env: npmEnv });
 
-  const packOutput = run("npm", ["pack", "--ignore-scripts", "--pack-destination", tmp], {
-    capture: true,
-    env: npmEnv,
-  });
-  const tarball = packOutput
-    .trim()
-    .split(/\r?\n/)
-    .findLast((line) => line.endsWith(".tgz"));
+    const packOutput = run("npm", ["pack", "--ignore-scripts", "--pack-destination", tmp], {
+      capture: true,
+      env: npmEnv,
+    });
+    const tarball = packOutput
+      .trim()
+      .split(/\r?\n/)
+      .findLast((line) => line.endsWith(".tgz"));
 
-  if (!tarball) {
-    throw new Error(`could not determine npm pack output from:\n${packOutput}`);
+    if (!tarball) {
+      throw new Error(`could not determine npm pack output from:\n${packOutput}`);
+    }
+    tarballPath = path.join(tmp, tarball);
   }
 
   run(
     "npm",
-    ["install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund", path.join(tmp, tarball)],
+    ["install", "--omit=dev", "--ignore-scripts", "--no-audit", "--no-fund", tarballPath],
     { cwd: installDir, env: npmEnv },
   );
 
