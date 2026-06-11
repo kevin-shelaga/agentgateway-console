@@ -140,6 +140,20 @@ describe("UsagePage", () => {
     expect(screen.getByText("15")).toBeInTheDocument();
   });
 
+  it("offers poll intervals with 15s default", async () => {
+    seedHistory();
+    mockFetch([{ match: "/api/metrics/llm", body: apiBody }]);
+    renderWithProviders(<UsagePage />);
+
+    const btn15 = await screen.findByRole("button", { name: "15s" });
+    const btn5 = screen.getByRole("button", { name: "5s" });
+    expect(btn15).toHaveAttribute("aria-pressed", "true");
+    expect(btn5).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(btn5);
+    expect(btn5).toHaveAttribute("aria-pressed", "true");
+    expect(btn15).toHaveAttribute("aria-pressed", "false");
+  });
+
   it("offers timeframe windows with 30m default", async () => {
     seedHistory();
     mockFetch([{ match: "/api/metrics/llm", body: apiBody }]);
