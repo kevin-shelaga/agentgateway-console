@@ -45,14 +45,24 @@ demo-app:
 	$(KUBECTL) wait --for=condition=Programmed gateway/demo-gateway -n default --timeout=120s
 	$(KUBECTL) -n default rollout status deploy/demo-gateway --timeout=120s
 
-# Mixed traffic from inside the cluster (no port-forward juggling):
-# chat completions against both models, echo hits, and some 404s for the
-# status-class bars. Rotates x-user-id between three users so the per-user
-# token charts populate. Runs for TRAFFIC_SECONDS (default 300).
+# Mixed traffic from inside the cluster (no port-forward juggling): chat
+# completions against both models, echo hits, 404s, a few guard-tripping
+# prompts (→ 403), and full MCP tool calls. Rotates x-user-id between three
+# users so the per-user token charts populate. Every Usage card gets shape.
+# Runs for TRAFFIC_SECONDS (default 300).
 demo-traffic:
 	$(KUBECTL) -n default delete pod demo-traffic --ignore-not-found --wait=true
 	$(KUBECTL) -n default run demo-traffic --image=curlimages/curl --restart=Never \
 		--labels=app=demo-traffic -- sh -c '\
+		GW=http://demo-gateway.default; \
+		ACC="-H accept:application/json,text/event-stream -H content-type:application/json"; \
+		mcp_call() { \
+		  init=$$(curl -si $$ACC -X POST $$GW/mcp -d "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\",\"capabilities\":{},\"clientInfo\":{\"name\":\"demo\",\"version\":\"0\"}}}"); \
+		  sid=$$(echo "$$init" | grep -i "mcp-session-id:" | tr -d "\r" | awk "{print \$$2}"); \
+		  [ -z "$$sid" ] && return; \
+		  curl -s -o /dev/null $$ACC -H "mcp-session-id: $$sid" -X POST $$GW/mcp -d "{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"; \
+		  curl -s -o /dev/null $$ACC -H "mcp-session-id: $$sid" -X POST $$GW/mcp -d "{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/call\",\"params\":{\"name\":\"$$1\",\"arguments\":$$2}}"; \
+		}; \
 		end=$$(( $$(date +%s) + $(TRAFFIC_SECONDS) )); \
 		i=0; \
 		while [ $$(date +%s) -lt $$end ]; do \
@@ -61,11 +71,14 @@ demo-traffic:
 		    0) user=alice ;; 1) user=bob ;; 2) user=carol ;; \
 		  esac; \
 		  body="{\"model\":\"demo\",\"messages\":[{\"role\":\"user\",\"content\":\"hello $$i\"}]}"; \
-		  case $$((i % 5)) in \
-		    0|1) curl -s -o /dev/null -X POST -H "content-type: application/json" -H "x-user-id: $$user" -d "$$body" http://demo-gateway.default/v1/chat/completions ;; \
-		    2)   curl -s -o /dev/null -X POST -H "content-type: application/json" -H "x-user-id: $$user" -d "$$body" http://demo-gateway.default/v2/chat/completions ;; \
-		    3)   curl -s -o /dev/null -H "x-user-id: $$user" http://demo-gateway.default/echo ;; \
-		    4)   curl -s -o /dev/null http://demo-gateway.default/does-not-exist ;; \
+		  case $$((i % 8)) in \
+		    0|1) curl -s -o /dev/null -X POST -H "content-type: application/json" -H "x-user-id: $$user" -d "$$body" $$GW/v1/chat/completions ;; \
+		    2)   curl -s -o /dev/null -X POST -H "content-type: application/json" -H "x-user-id: $$user" -d "$$body" $$GW/v2/chat/completions ;; \
+		    3)   curl -s -o /dev/null -H "x-user-id: $$user" $$GW/echo ;; \
+		    4)   curl -s -o /dev/null $$GW/does-not-exist ;; \
+		    5)   curl -s -o /dev/null -X POST -H "content-type: application/json" -H "x-user-id: $$user" -d "{\"model\":\"demo\",\"messages\":[{\"role\":\"user\",\"content\":\"my credit card is 4111 1111 1111 1111\"}]}" $$GW/v1/chat/completions ;; \
+		    6)   mcp_call roll_dice "{\"sides\":20}" ;; \
+		    7)   mcp_call get_weather "{\"city\":\"Atlanta\"}" ;; \
 		  esac; \
 		  sleep 0.5; \
 		done; echo "sent $$i requests"'
