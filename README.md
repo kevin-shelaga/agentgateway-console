@@ -197,7 +197,7 @@ The chart deploys one console per cluster, **hard-locked to that cluster** — t
 
 ```bash
 helm install console oci://ghcr.io/kevin-shelaga/charts/agentgateway-console \
-  --version 0.1.0 -n agentgateway-system --create-namespace
+  --version 0.4.0 -n agentgateway-system --create-namespace
 kubectl -n agentgateway-system port-forward svc/console-agentgateway-console 3000:80
 ```
 

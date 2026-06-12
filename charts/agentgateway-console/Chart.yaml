@@ -5,8 +5,8 @@ description: >-
   Gateway API resources and the agentgateway.dev CRDs. Deployed in-cluster it
   is hard-locked to that cluster (no context switching).
 type: application
-version: 0.3.0
-appVersion: "0.3.0"
+version: 0.4.0
+appVersion: "0.4.0"
 home: https://agentgateway.dev
 icon: https://raw.githubusercontent.com/agentgateway/agentgateway/main/ui/public/favicon.svg
 keywords:
