@@ -12,16 +12,18 @@ API keys, the playground, and the Usage charts.
 
 ```sh
 make demo-up        # kind cluster + Gateway API CRDs + agentgateway + demo app
-make demo-traffic   # mixed LLM / echo / 404 traffic for ~5 minutes
+make demo-traffic   # mixed LLM / MCP / guardrail / echo / 404 traffic for ~5 minutes
 make demo-console   # launch the console pointed at the kind context
 make demo-down      # tear it all down
 ```
 
 Traffic takes ~30 seconds to show up on the Usage page (metrics are scraped
 from the proxy pods every 15s and charted as session-scope rates). The
-traffic generator rotates `x-user-id` between `alice`, `bob`, and `carol`,
-which the demo gateway turns into a `user` metric label — so the Usage
-page's "Tokens by user" card lights up too.
+generator exercises every Usage card: chat completions on both models, MCP
+tool calls (`roll_dice`, `get_weather`), a few guard-tripping prompts
+(→ 403), echo hits, and 404s. It rotates `x-user-id` between `alice`, `bob`,
+and `carol`, which the demo gateway turns into a `user` metric label — so the
+"Tokens by user" card lights up too.
 
 ## What gets deployed
 
@@ -34,6 +36,9 @@ page's "Tokens by user" card lights up too.
 | `Secret default/demo-llm-key` | Shows up on the API Keys page (referenced by both backends) |
 | `Deployment default/mockllm` | OpenAI-compatible mock returning randomized `usage` token counts |
 | `AgentgatewayParameters demo-gateway-params` | Adds a `user` metric label from the `x-user-id` header → "Tokens by user" card |
+| `AgentgatewayBackend mcp-tools` + `HTTPRoute default/mcp` | MCP backend (`/mcp`) → playground MCP tab + "MCP tool calls" card |
+| `Deployment default/mockmcp` | Mock MCP server with `echo` / `add` / `get_weather` / `roll_dice` tools |
+| `AgentgatewayPolicy demo-prompt-guard` | Rejects prompts mentioning "credit card"/"password" (403) → "Guardrails" card |
 
 The mock LLM is a stdlib-only Python server shipped in a ConfigMap on
 `python:3.12-alpine` — no images to build. It answers

@@ -152,3 +152,29 @@ spec:
         - group: agentgateway.dev
           kind: AgentgatewayBackend
           name: mcp-tools
+---
+# Prompt guard on the gpt-4o-mini backend: reject prompts mentioning a credit
+# card or password (403). `make demo-traffic` sends a few of these so the
+# Usage page's "Guardrails" card (phase=Request, action=Reject) populates.
+apiVersion: agentgateway.dev/v1alpha1
+kind: AgentgatewayPolicy
+metadata:
+  name: demo-prompt-guard
+  namespace: default
+spec:
+  targetRefs:
+    - group: agentgateway.dev
+      kind: AgentgatewayBackend
+      name: gpt4o-mini
+  backend:
+    ai:
+      promptGuard:
+        request:
+          - regex:
+              action: Reject
+              matches:
+                - "credit card"
+                - "password"
+            response:
+              message: "blocked by demo prompt guard"
+              statusCode: 403
